@@ -104,6 +104,12 @@ pub trait Environment: 'static + Clone + Debug + Default + Send + Sync {
         static TERMINATOR: OnceCell<Arc<AtomicBool>> = OnceCell::new();
         TERMINATOR.get_or_init(|| Arc::new(AtomicBool::new(false)))
     }
+
+    /// Returns the terminator bit for the prover.
+    fn prover_terminator() -> &'static Arc<AtomicBool> {
+        static TERMINATOR: OnceCell<Arc<AtomicBool>> = OnceCell::new();
+        TERMINATOR.get_or_init(|| Arc::new(AtomicBool::new(false)))
+    }
 }
 
 #[derive(Clone, Debug, Default)]

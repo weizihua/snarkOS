@@ -14,17 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    helpers::{NodeType, State},
-    Data,
-    Environment,
-    LedgerReader,
-    LedgerRequest,
-    LedgerRouter,
-    Message,
-    PeersRequest,
-    PeersRouter,
-};
+use crate::{helpers::{NodeType, State}, Data, Environment, LedgerReader, LedgerRouter, Message, PeersRequest, PeersRouter};
 use snarkos_storage::{storage::Storage, ProverState};
 use snarkvm::dpc::{posw::PoSWProof, prelude::*};
 
@@ -48,9 +38,6 @@ pub(crate) type ProverRouter<N> = mpsc::Sender<ProverRequest<N>>;
 /// Shorthand for the child half of the `Prover` message channel.
 type ProverHandler<N> = mpsc::Receiver<ProverRequest<N>>;
 
-/// The miner heartbeat in seconds.
-const MINER_HEARTBEAT_IN_SECONDS: Duration = Duration::from_secs(2);
-
 ///
 /// An enum of requests that the `Prover` struct processes.
 ///
@@ -62,6 +49,7 @@ pub enum ProverRequest<N: Network> {
     MemoryPoolClear(Option<Block<N>>),
     /// UnconfirmedTransaction := (peer_ip, transaction)
     UnconfirmedTransaction(SocketAddr, Transaction<N>),
+    OperatorConnected(SocketAddr),
 }
 
 ///
@@ -86,7 +74,8 @@ pub struct Prover<N: Network, E: Environment> {
     /// The ledger state of the node.
     ledger_reader: LedgerReader<N>,
     /// The ledger router of the node.
-    ledger_router: LedgerRouter<N>,
+    _ledger_router: LedgerRouter<N>,
+    current_block: Arc<RwLock<u32>>,
 }
 
 impl<N: Network, E: Environment> Prover<N, E> {
@@ -94,7 +83,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
     pub async fn open<S: Storage, P: AsRef<Path> + Copy>(
         path: P,
         address: Option<Address<N>>,
-        local_ip: SocketAddr,
+        _local_ip: SocketAddr,
         pool_ip: Option<SocketAddr>,
         peers_router: PeersRouter<N, E>,
         ledger_reader: LedgerReader<N>,
@@ -105,7 +94,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
         // Initialize the prover thread pool.
         let thread_pool = ThreadPoolBuilder::new()
             .stack_size(8 * 1024 * 1024)
-            .num_threads((num_cpus::get() / 8 * 7).max(1))
+            .num_threads(num_cpus::get())
             .build()?;
 
         // Initialize the prover.
@@ -118,7 +107,8 @@ impl<N: Network, E: Environment> Prover<N, E> {
             memory_pool: Arc::new(RwLock::new(MemoryPool::new())),
             peers_router,
             ledger_reader,
-            ledger_router,
+            _ledger_router: ledger_router,
+            current_block: Arc::new(RwLock::new(0)),
         });
 
         // Initialize the handler for the prover.
@@ -138,33 +128,23 @@ impl<N: Network, E: Environment> Prover<N, E> {
             let _ = handler.await;
         }
 
-        // Initialize the miner, if the node type is a miner.
-        if E::NODE_TYPE == NodeType::Miner && prover.pool.is_none() {
-            Self::start_miner(prover.clone(), local_ip).await;
-        }
-
-        // Initialize the prover, if the node type is a prover.
-        if E::NODE_TYPE == NodeType::Prover && prover.pool.is_some() {
-            let prover = prover.clone();
-            let (router, handler) = oneshot::channel();
-            task::spawn(async move {
-                // Notify the outer function that the task is ready.
-                let _ = router.send(());
-                loop {
-                    // Sleep for `1` second.
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-                    // TODO (howardwu): Check that the prover is connected to the pool before proceeding.
-                    //  Currently we use a sleep function to probabilistically ensure the peer is connected.
-                    if !E::terminator().load(Ordering::SeqCst) && !E::status().is_peering() && !E::status().is_mining() {
-                        prover.send_pool_register().await;
+        // terminator init
+        task::spawn(async move {
+            let mut counter = false;
+            loop {
+                if E::prover_terminator().load(Ordering::SeqCst) {
+                    if counter {
+                        E::prover_terminator().store(false, Ordering::SeqCst);
+                        counter = false;
+                    } else {
+                        counter = true;
                     }
+                } else {
+                    counter = false;
                 }
-            });
-
-            // Wait until the operator handler is ready.
-            let _ = handler.await;
-        }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        });
 
         Ok(prover)
     }
@@ -205,6 +185,13 @@ impl<N: Network, E: Environment> Prover<N, E> {
                     self.add_unconfirmed_transaction(peer_ip, transaction).await
                 }
             }
+            ProverRequest::OperatorConnected(peer_ip) => {
+                if let Some(pool_ip) = self.pool {
+                    if pool_ip == peer_ip {
+                        self.send_pool_register().await;
+                    }
+                }
+            }
         }
     }
 
@@ -238,59 +225,78 @@ impl<N: Network, E: Environment> Prover<N, E> {
                 if let Some(pool_ip) = self.pool {
                     // Refuse work from any pool other than the registered one.
                     if pool_ip == operator_ip {
-                        // If `terminator` is `false` and the status is not `Peering` or `Mining`
-                        // already, mine the next block.
-                        if !E::terminator().load(Ordering::SeqCst) && !E::status().is_peering() && !E::status().is_mining() {
+                        let thread_pool = self.thread_pool.clone();
+                        let peers_router = self.peers_router.clone();
+                        let block_height = block_template.block_height();
+                        let current_block = self.current_block.clone();
+                        *(current_block.write().await) = block_height;
+                        task::spawn(async move {
+                            trace!("[PoolRequest] Received a block template {} from the pool operator", block_height);
+                            E::prover_terminator().store(true, Ordering::SeqCst);
+                            while E::prover_terminator().load(Ordering::SeqCst) {
+                                // Wait until the prover terminator is set to false.
+                                tokio::time::sleep(Duration::from_millis(50)).await;
+                            }
+                            trace!("[PoolRequest] Starting to process the block template for block {}", block_height);
+
                             // Set the status to `Mining`.
                             E::status().update(State::Mining);
 
-                            let thread_pool = self.thread_pool.clone();
-                            let block_height = block_template.block_height();
-                            let block_template = block_template.clone();
+                            while !E::prover_terminator().load(Ordering::SeqCst) {
+                                let block_template = block_template.clone();
+                                let block_height = block_template.block_height();
+                                let thread_pool = thread_pool.clone();
+                                if block_height != *(current_block.try_read().unwrap()) {
+                                    warn!("Stale work: current {} latest {}", block_height, *(current_block.try_read().unwrap()));
+                                    break;
+                                }
 
-                            let result = task::spawn_blocking(move || {
-                                thread_pool.install(move || {
-                                    loop {
-                                        let block_header =
-                                            BlockHeader::mine_once_unchecked(&block_template, E::terminator(), &mut thread_rng())?;
+                                let result = task::spawn_blocking(move || {
+                                    thread_pool.install(move || {
+                                        loop {
+                                            let block_header =
+                                                BlockHeader::mine_once_unchecked(&block_template, E::prover_terminator(), &mut thread_rng())?;
 
-                                        // Ensure the share difficulty target is met.
-                                        if N::posw().verify(
-                                            block_header.height(),
-                                            share_difficulty,
-                                            &[*block_header.to_header_root().unwrap(), *block_header.nonce()],
-                                            block_header.proof(),
-                                        ) {
-                                            return Ok::<(N::PoSWNonce, PoSWProof<N>, u64), anyhow::Error>((
-                                                block_header.nonce(),
-                                                block_header.proof().clone(),
-                                                block_header.proof().to_proof_difficulty()?,
-                                            ));
+                                            // Ensure the share difficulty target is met.
+                                            if N::posw().verify(
+                                                block_header.height(),
+                                                share_difficulty,
+                                                &[*block_header.to_header_root().unwrap(), *block_header.nonce()],
+                                                block_header.proof(),
+                                            ) {
+                                                return Ok::<(N::PoSWNonce, PoSWProof<N>, u64), anyhow::Error>((
+                                                    block_header.nonce(),
+                                                    block_header.proof().clone(),
+                                                    block_header.proof().to_proof_difficulty()?,
+                                                ));
+                                            }
+                                        }
+                                    })
+                                })
+                                .await;
+
+                                match result {
+                                    Ok(Ok((nonce, proof, proof_difficulty))) => {
+                                        info!(
+                                            "Prover successfully mined a share for unconfirmed block {} with proof difficulty of {}",
+                                            block_height, proof_difficulty
+                                        );
+
+                                        // Send a `PoolResponse` to the operator.
+                                        let message = Message::PoolResponse(recipient, nonce, Data::Object(proof));
+                                        if let Err(error) = peers_router.send(PeersRequest::MessageSend(operator_ip, message)).await {
+                                            warn!("[PoolResponse] {}", error);
                                         }
                                     }
-                                })
-                            })
-                            .await;
+                                    Ok(Err(error)) => trace!("{}", error),
+                                    Err(error) => trace!("{}", anyhow!("Failed to mine the next block {}", error)),
+                                }
+                            }
 
                             E::status().update(State::Ready);
+                            E::prover_terminator().store(false, Ordering::SeqCst);
 
-                            match result {
-                                Ok(Ok((nonce, proof, proof_difficulty))) => {
-                                    info!(
-                                        "Prover successfully mined a share for unconfirmed block {} with proof difficulty of {}",
-                                        block_height, proof_difficulty
-                                    );
-
-                                    // Send a `PoolResponse` to the operator.
-                                    let message = Message::PoolResponse(recipient, nonce, Data::Object(proof));
-                                    if let Err(error) = self.peers_router.send(PeersRequest::MessageSend(operator_ip, message)).await {
-                                        warn!("[PoolResponse] {}", error);
-                                    }
-                                }
-                                Ok(Err(error)) => trace!("{}", error),
-                                Err(error) => trace!("{}", anyhow!("Failed to mine the next block {}", error)),
-                            }
-                        }
+                        });
                     }
                 } else {
                     error!("Missing pool IP address. Please specify a pool IP address in order to run the prover");
@@ -320,82 +326,6 @@ impl<N: Network, E: Environment> Prover<N, E> {
                     }
                 }
                 Err(error) => error!("{}", error),
-            }
-        }
-    }
-
-    ///
-    /// Initialize the miner, if the node type is a miner.
-    ///
-    async fn start_miner(prover: Arc<Self>, local_ip: SocketAddr) {
-        // Initialize a new instance of the miner.
-        if E::NODE_TYPE == NodeType::Miner && prover.pool.is_none() {
-            if let Some(recipient) = prover.address {
-                // Initialize the prover process.
-                let prover = prover.clone();
-                let (router, handler) = oneshot::channel();
-                E::tasks().append(task::spawn(async move {
-                    // Notify the outer function that the task is ready.
-                    let _ = router.send(());
-                    loop {
-                        // If `terminator` is `false` and the status is not `Peering` or `Mining` already, mine the next block.
-                        if !E::terminator().load(Ordering::SeqCst) && !E::status().is_peering() && !E::status().is_mining() {
-                            // Set the status to `Mining`.
-                            E::status().update(State::Mining);
-
-                            // Prepare the unconfirmed transactions and dependent objects.
-                            let state = prover.state.clone();
-                            let thread_pool = prover.thread_pool.clone();
-                            let canon = prover.ledger_reader.clone(); // This is *safe* as the ledger only reads.
-                            let unconfirmed_transactions = prover.memory_pool.read().await.transactions();
-                            let ledger_router = prover.ledger_router.clone();
-                            let prover_router = prover.prover_router.clone();
-
-                            E::tasks().append(task::spawn(async move {
-                                // Mine the next block.
-                                let result = task::spawn_blocking(move || {
-                                    thread_pool.install(move || {
-                                        canon.mine_next_block(
-                                            recipient,
-                                            E::COINBASE_IS_PUBLIC,
-                                            &unconfirmed_transactions,
-                                            E::terminator(),
-                                            &mut thread_rng(),
-                                        )
-                                    })
-                                })
-                                .await
-                                .map_err(|e| e.into());
-
-                                // Set the status to `Ready`.
-                                E::status().update(State::Ready);
-
-                                match result {
-                                    Ok(Ok((block, coinbase_record))) => {
-                                        debug!("Miner has found unconfirmed block {} ({})", block.height(), block.hash());
-                                        // Store the coinbase record.
-                                        if let Err(error) = state.add_coinbase_record(block.height(), coinbase_record) {
-                                            warn!("[Miner] Failed to store coinbase record - {}", error);
-                                        }
-
-                                        // Broadcast the next block.
-                                        let request = LedgerRequest::UnconfirmedBlock(local_ip, block, prover_router.clone());
-                                        if let Err(error) = ledger_router.send(request).await {
-                                            warn!("Failed to broadcast mined block - {}", error);
-                                        }
-                                    }
-                                    Ok(Err(error)) | Err(error) => trace!("{}", error),
-                                }
-                            }));
-                        }
-                        // Proceed to sleep for a preset amount of time.
-                        tokio::time::sleep(MINER_HEARTBEAT_IN_SECONDS).await;
-                    }
-                }));
-                // Wait until the miner task is ready.
-                let _ = handler.await;
-            } else {
-                error!("Missing miner address. Please specify an Aleo address in order to mine");
             }
         }
     }

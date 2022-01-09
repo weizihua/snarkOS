@@ -89,6 +89,8 @@ pub struct LedgerState<N: Network> {
     read_only: (bool, Arc<AtomicU32>, RwLock<Option<Arc<JoinHandle<()>>>>),
     /// Used to ensure the database operations aren't interrupted by a shutdown.
     map_lock: Arc<RwLock<()>>,
+    /// Coinbase cache.
+    coinbase_cache: RwLock<(Option<Transaction<N>>, Option<Record<N>>)>,
 }
 
 impl<N: Network> LedgerState<N> {
@@ -115,6 +117,7 @@ impl<N: Network> LedgerState<N> {
             blocks: BlockState::open(storage)?,
             read_only: (is_read_only, Arc::new(AtomicU32::new(0)), RwLock::new(None)),
             map_lock: Default::default(),
+            coinbase_cache: RwLock::new((None, None)),
         };
 
         // Determine the latest block height.
@@ -257,6 +260,7 @@ impl<N: Network> LedgerState<N> {
             blocks: BlockState::open(storage)?,
             read_only: (is_read_only, Arc::new(AtomicU32::new(0)), RwLock::new(None)),
             map_lock: Default::default(),
+            coinbase_cache: RwLock::new((None, None)),
         });
 
         // Determine the latest block height.
@@ -594,6 +598,12 @@ impl<N: Network> LedgerState<N> {
         Ok(true)
     }
 
+    pub fn invalidate_coinbase_cache(&self) {
+        let mut w = self.coinbase_cache.write();
+        *w = (None, None);
+        info!("Coinbase cache invalidated");
+    }
+
     /// Returns a block template based on the latest state of the ledger.
     pub fn get_block_template<R: Rng + CryptoRng>(
         &self,
@@ -665,9 +675,20 @@ impl<N: Network> LedgerState<N> {
         // Calculate the final coinbase reward (including the transaction fees).
         coinbase_reward = coinbase_reward.add(transaction_fees);
 
-        // Craft a coinbase transaction, and append it to the list of transactions.
-        let (coinbase_transaction, coinbase_record) = Transaction::<N>::new_coinbase(recipient, coinbase_reward, is_public, rng)?;
-        transactions.push(coinbase_transaction);
+        let coinbase: (Transaction<N>, Record<N>);
+
+        if self.coinbase_cache.read().0.is_none() {
+            coinbase = Transaction::<N>::new_coinbase(recipient, coinbase_reward, is_public, rng)?;
+            let mut w = self.coinbase_cache.write();
+            *w = (Some(coinbase.0.clone()), Some(coinbase.1.clone()));
+            info!("Created new coinbase transaction {}", coinbase.0.transaction_id());
+        } else {
+            let cache = self.coinbase_cache.read().clone();
+            coinbase = (cache.0.unwrap().clone(), cache.1.unwrap().clone());
+            info!("Using cached coinbase transaction {}", coinbase.0.transaction_id());
+        }
+
+        transactions.push(coinbase.0);
 
         // Construct the new block transactions.
         let transactions = Transactions::from(&transactions)?;
@@ -681,7 +702,7 @@ impl<N: Network> LedgerState<N> {
             cumulative_weight,
             previous_ledger_root,
             transactions,
-            coinbase_record,
+            coinbase.1,
         ))
     }
 
@@ -1078,7 +1099,7 @@ impl<N: Network> LedgerState<N> {
                         last_seen_block_height.store(latest_block_height, Ordering::SeqCst);
                     }
                 }
-                thread::sleep(std::time::Duration::from_secs(6));
+                thread::sleep(std::time::Duration::from_millis(100));
             }
         }))
     }

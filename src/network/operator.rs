@@ -62,7 +62,7 @@ pub enum OperatorRequest<N: Network> {
 }
 
 /// The predefined base share difficulty.
-const BASE_SHARE_DIFFICULTY: u64 = u64::MAX;
+const BASE_SHARE_DIFFICULTY: u64 = u64::MAX / 5;
 /// The operator heartbeat in seconds.
 const HEARTBEAT_IN_SECONDS: Duration = Duration::from_secs(1);
 
@@ -131,7 +131,7 @@ impl<N: Network, E: Environment> Operator<N, E> {
             known_nonces: Default::default(),
             operator_router,
             memory_pool,
-            peers_router,
+            peers_router: peers_router.clone(),
             ledger_reader,
             ledger_router,
             prover_router,
@@ -193,10 +193,17 @@ impl<N: Network, E: Environment> Operator<N, E> {
                             // Update the block template.
                             match result {
                                 Ok(Ok(block_template)) => {
+	                            info!("New block template for block {} ready", block_template.block_height());
                                     // Acquire the write lock to update the block template.
-                                    *operator.block_template.write().await = Some(block_template);
+                                    *operator.block_template.write().await = Some(block_template.clone());
                                     // Clear the set of known nonces.
                                     operator.known_nonces.write().await.clear();
+
+                                    // Route a `PoolRequest` to the peer.
+                                    let message = Message::PoolRequest(BASE_SHARE_DIFFICULTY, Data::Object(block_template));
+                                    if let Err(error) = peers_router.send(PeersRequest::MessagePropagateProver(message)).await {
+                                        warn!("Failed to propagate PoolRequest: {}", error);
+                                    }
                                 }
                                 Ok(Err(error_message)) => error!("{}", error_message),
                                 Err(error) => error!("{}", error),
@@ -313,7 +320,7 @@ impl<N: Network, E: Environment> Operator<N, E> {
 
                     // Increment the share count for the prover.
                     let coinbase_record = block_template.coinbase_record().clone();
-                    match self.state.increment_share(block_height, coinbase_record, &prover) {
+                    match self.state.increment_share(block_height, coinbase_record.clone(), &prover) {
                         Ok(..) => info!(
                             "Operator has received a valid share from {} ({}) for block {}",
                             prover, peer_ip, block_height,
@@ -334,6 +341,7 @@ impl<N: Network, E: Environment> Operator<N, E> {
                         if let Ok(block) = Block::from(previous_block_hash, block_header, transactions) {
                             info!("Operator has found unconfirmed block {} ({})", block.height(), block.hash());
                             let request = LedgerRequest::UnconfirmedBlock(self.local_ip, block, self.prover_router.clone());
+                            self.ledger_reader.invalidate_coinbase_cache();
                             if let Err(error) = self.ledger_router.send(request).await {
                                 warn!("Failed to broadcast mined block - {}", error);
                             }

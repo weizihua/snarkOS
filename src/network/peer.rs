@@ -232,7 +232,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
                             return Err(anyhow!("Already connected to a peer with nonce {}", peer_nonce));
                         }
                         // Verify the listener port.
-                        if peer_ip.port() != listener_port {
+                        if E::NODE_TYPE != NodeType::Operator && peer_ip.port() != listener_port {
                             // Update the peer IP to the listener port.
                             peer_ip.set_port(listener_port);
                             // Ensure the claimed listener port is open.
@@ -560,6 +560,16 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                     peer.node_type = node_type;
                                     // Update the status of the peer.
                                     peer.status.update(status);
+
+                                    if peer.node_type == NodeType::Prover {
+                                        if let Err(error) = peers_router.send(PeersRequest::PeerIsProver(peer_ip)).await {
+                                            warn!("[PeerIsProver] {}", error);
+                                        }
+                                    } else if peer.node_type == NodeType::Operator {
+                                        if let Err(error) = prover_router.send(ProverRequest::OperatorConnected(peer_ip)).await {
+                                            warn!("[OperatorConnected] {}", error);
+                                        }
+                                    }
 
                                     // Determine if the peer is on a fork (or unknown).
                                     let is_fork = match ledger_reader.get_block_hash(peer.block_header.height()) {
