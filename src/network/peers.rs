@@ -17,6 +17,7 @@
 use crate::{Data, Environment, LedgerReader, LedgerRouter, Message, OperatorRouter, OutboundRouter, Peer, ProverRouter};
 use snarkvm::dpc::prelude::*;
 
+use crate::helpers::NodeType;
 use anyhow::Result;
 use rand::{prelude::IteratorRandom, rngs::OsRng, thread_rng, Rng};
 use std::{
@@ -31,7 +32,6 @@ use tokio::{
     task,
     time::timeout,
 };
-use crate::helpers::NodeType;
 
 /// Shorthand for the parent half of the `Peers` message channel.
 pub(crate) type PeersRouter<N, E> = mpsc::Sender<PeersRequest<N, E>>;
@@ -321,7 +321,9 @@ impl<N: Network, E: Environment> Peers<N, E> {
                     debug!("Exceeded maximum number of connected peers");
 
                     // Determine the peers to disconnect from.
-                    let num_excess_peers = number_of_connected_peers.saturating_sub(self.prover_peers.read().await.len()).saturating_sub(E::MAXIMUM_NUMBER_OF_PEERS);
+                    let num_excess_peers = number_of_connected_peers
+                        .saturating_sub(self.prover_peers.read().await.len())
+                        .saturating_sub(E::MAXIMUM_NUMBER_OF_PEERS);
                     let peer_ips_to_disconnect = self
                         .connected_peers
                         .read()
@@ -333,15 +335,11 @@ impl<N: Network, E: Environment> Peers<N, E> {
                             } else if !E::beacon_nodes().contains(peer_ip) {
                                 return false;
                             } else {
-                                return match self.prover_peers.try_read() {
-                                    Ok(peers) => {
-                                        !peers.contains(peer_ip)
-                                    }
-                                    Err(_) => {
-                                        false
-                                    }
+                                match self.prover_peers.try_read() {
+                                    Ok(peers) => !peers.contains(peer_ip),
+                                    Err(_) => false,
                                 }
-                            }
+                            };
                         })
                         .take(num_excess_peers)
                         .map(|(&peer_ip, _)| peer_ip)
@@ -618,11 +616,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
 
     async fn propagate_prover(&self, message: Message<N, E>) {
         // Iterate through all provers.
-        for peer in self
-            .connected_peers()
-            .await
-            .iter()
-        {
+        for peer in self.connected_peers().await.iter() {
             if self.prover_peers.read().await.contains(peer) {
                 self.send(*peer, message.clone()).await;
             }

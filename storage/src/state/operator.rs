@@ -21,9 +21,12 @@ use crate::{
 use snarkvm::dpc::prelude::*;
 
 use anyhow::{anyhow, Result};
-use std::{collections::HashMap, path::Path, sync::Arc};
-use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::{
+    collections::{HashMap, HashSet},
+    iter::FromIterator,
+    path::Path,
+    sync::Arc,
+};
 
 #[derive(Debug)]
 pub struct OperatorState<N: Network> {

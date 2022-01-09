@@ -18,15 +18,24 @@
 //!
 //! See [RpcFunctions](../trait.RpcFunctions.html) for documentation of public endpoints.
 
-use crate::{rpc::{rpc::*, rpc_trait::RpcFunctions}, Environment, LedgerReader, LedgerRouter, Peers, PeersRequest, ProverRequest, ProverRouter, OperatorRouter, network::Operator};
+use crate::{
+    network::Operator,
+    rpc::{rpc::*, rpc_trait::RpcFunctions},
+    Environment,
+    LedgerReader,
+    LedgerRouter,
+    OperatorRouter,
+    Peers,
+    PeersRequest,
+    ProverRequest,
+    ProverRouter,
+};
 use snarkos_storage::Metadata;
 use snarkvm::{
     dpc::{Address, AleoAmount, Block, BlockHeader, Blocks, MemoryPool, Network, Transaction, Transactions, Transition},
     utilities::FromBytes,
 };
-use tokio::{
-    sync::{oneshot}
-};
+use tokio::sync::oneshot;
 
 use jsonrpc_core::Value;
 use snarkvm::{dpc::Record, utilities::ToBytes};
@@ -349,7 +358,19 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcImpl<N, E> {
                     panic!("{}", error.to_string());
                 }
             };
-            if let Err(error) = self.peers.router().send(PeersRequest::Connect(res, self.ledger.clone(), self.ledger_router.clone(), self.operator_router.clone(), self.prover_router.clone(), router)).await {
+            if let Err(error) = self
+                .peers
+                .router()
+                .send(PeersRequest::Connect(
+                    res,
+                    self.ledger.clone(),
+                    self.ledger_router.clone(),
+                    self.operator_router.clone(),
+                    self.prover_router.clone(),
+                    router,
+                ))
+                .await
+            {
                 warn!("Connect {}", error);
             }
         }

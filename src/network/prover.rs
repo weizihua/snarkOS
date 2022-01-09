@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::{NodeType, State}, Data, Environment, LedgerReader, LedgerRouter, Message, PeersRequest, PeersRouter};
+use crate::{
+    helpers::{NodeType, State},
+    Data,
+    Environment,
+    LedgerReader,
+    LedgerRouter,
+    Message,
+    PeersRequest,
+    PeersRouter,
+};
 use snarkos_storage::{storage::Storage, ProverState};
 use snarkvm::dpc::{posw::PoSWProof, prelude::*};
 
@@ -231,7 +240,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
                         let current_block = self.current_block.clone();
                         *(current_block.write().await) = block_height;
                         task::spawn(async move {
-                            trace!("[PoolRequest] Received a block template {} from the pool operator", block_height);
+                            info!("[PoolRequest] Received a block template {} from the pool operator", block_height);
                             E::prover_terminator().store(true, Ordering::SeqCst);
                             while E::prover_terminator().load(Ordering::SeqCst) {
                                 // Wait until the prover terminator is set to false.
@@ -247,15 +256,22 @@ impl<N: Network, E: Environment> Prover<N, E> {
                                 let block_height = block_template.block_height();
                                 let thread_pool = thread_pool.clone();
                                 if block_height != *(current_block.try_read().unwrap()) {
-                                    warn!("Stale work: current {} latest {}", block_height, *(current_block.try_read().unwrap()));
+                                    info!(
+                                        "Terminating stale work: current {} latest {}",
+                                        block_height,
+                                        *(current_block.try_read().unwrap())
+                                    );
                                     break;
                                 }
 
                                 let result = task::spawn_blocking(move || {
                                     thread_pool.install(move || {
                                         loop {
-                                            let block_header =
-                                                BlockHeader::mine_once_unchecked(&block_template, E::prover_terminator(), &mut thread_rng())?;
+                                            let block_header = BlockHeader::mine_once_unchecked(
+                                                &block_template,
+                                                E::prover_terminator(),
+                                                &mut thread_rng(),
+                                            )?;
 
                                             // Ensure the share difficulty target is met.
                                             if N::posw().verify(
@@ -295,7 +311,6 @@ impl<N: Network, E: Environment> Prover<N, E> {
 
                             E::status().update(State::Ready);
                             E::prover_terminator().store(false, Ordering::SeqCst);
-
                         });
                     }
                 } else {

@@ -16,7 +16,16 @@
 
 //! Logic for instantiating the RPC server.
 
-use crate::{rpc::{rpc_impl::RpcImpl, rpc_trait::RpcFunctions}, Environment, LedgerReader, LedgerRouter, Peers, ProverRouter, OperatorRouter, network::Operator};
+use crate::{
+    network::Operator,
+    rpc::{rpc_impl::RpcImpl, rpc_trait::RpcFunctions},
+    Environment,
+    LedgerReader,
+    LedgerRouter,
+    OperatorRouter,
+    Peers,
+    ProverRouter,
+};
 use snarkvm::dpc::{Address, MemoryPool, Network};
 
 use hyper::{
@@ -88,7 +97,17 @@ pub async fn initialize_rpc_server<N: Network, E: Environment>(
     memory_pool: Arc<RwLock<MemoryPool<N>>>,
 ) -> tokio::task::JoinHandle<()> {
     let credentials = RpcCredentials { username, password };
-    let rpc = RpcImpl::new(credentials, address, peers.clone(), ledger, ledger_router, operator, operator_router, prover_router, memory_pool);
+    let rpc = RpcImpl::new(
+        credentials,
+        address,
+        peers.clone(),
+        ledger,
+        ledger_router,
+        operator,
+        operator_router,
+        prover_router,
+        memory_pool,
+    );
 
     let service = make_service_fn(move |conn: &AddrStream| {
         let caller = conn.remote_addr();
@@ -347,10 +366,7 @@ async fn handle_rpc<N: Network, E: Environment>(
         //     result_to_response(&req, result)
         // }
         "connect" => {
-            let result = rpc
-                .connect(params)
-                .await
-                .map_err(convert_crate_err);
+            let result = rpc.connect(params).await.map_err(convert_crate_err);
             result_to_response(&req, result)
         }
         "getshareforprover" => {
