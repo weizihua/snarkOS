@@ -22,6 +22,8 @@ use snarkvm::dpc::prelude::*;
 
 use anyhow::{anyhow, Result};
 use std::{collections::HashMap, path::Path, sync::Arc};
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 pub struct OperatorState<N: Network> {
@@ -116,17 +118,18 @@ impl<N: Network> SharesState<N> {
     }
 
     /// Returns the shares for a specific prover, given a ledger and the prover address.
-    fn get_shares_for_prover(&self, ledger: &Arc<LedgerState<N>>, prover: &Address<N>) -> u64 {
+    fn get_shares_for_prover(&self, _: &Arc<LedgerState<N>>, prover: &Address<N>) -> u64 {
         self.shares
             .iter()
-            .filter_map(|((_, coinbase_record), shares)| {
+            .filter_map(|((_, _), shares)| {
                 if !shares.contains_key(prover) {
                     None
                 } else {
-                    match ledger.contains_commitment(&coinbase_record.commitment()) {
-                        Ok(true) => shares.get(prover).copied(),
-                        Ok(false) | Err(_) => None,
-                    }
+                    // match ledger.contains_commitment(&coinbase_record.commitment()) {
+                    //     Ok(true) => shares.get(prover).copied(),
+                    //     Ok(false) | Err(_) => None,
+                    // }
+                    shares.get(prover).copied()
                 }
             })
             .sum()
