@@ -330,10 +330,8 @@ impl<N: Network, E: Environment> Peers<N, E> {
                         .await
                         .iter()
                         .filter(|(peer_ip, _)| {
-                            if E::sync_nodes().contains(peer_ip) {
-                                return false;
-                            } else if !E::beacon_nodes().contains(peer_ip) {
-                                return false;
+                            return if E::sync_nodes().contains(peer_ip) || E::beacon_nodes().contains(peer_ip) {
+                                false
                             } else {
                                 match self.prover_peers.try_read() {
                                     Ok(peers) => !peers.contains(peer_ip),

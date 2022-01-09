@@ -684,7 +684,7 @@ impl<N: Network> LedgerState<N> {
             info!("Created new coinbase transaction {}", coinbase.0.transaction_id());
         } else {
             let cache = self.coinbase_cache.read().clone();
-            coinbase = (cache.0.unwrap().clone(), cache.1.unwrap().clone());
+            coinbase = (cache.0.unwrap(), cache.1.unwrap());
             info!("Using cached coinbase transaction {}", coinbase.0.transaction_id());
         }
 
