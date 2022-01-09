@@ -278,7 +278,9 @@ impl<N: Network, E: Environment> Ledger<N, E> {
                 // Disconnect from peers with frequent failures.
                 self.disconnect_from_failing_peers().await;
                 // Update the block requests.
-                self.update_block_requests().await;
+                if E::NODE_TYPE != NodeType::Prover {
+                    self.update_block_requests().await;
+                }
 
                 debug!(
                     "Status Report (type = {}, status = {}, block_height = {}, cumulative_weight = {}, block_requests = {}, connected_peers = {})",
@@ -469,21 +471,23 @@ impl<N: Network, E: Environment> Ledger<N, E> {
                 _ => State::Ready,
             };
 
-            // Retrieve the latest cumulative weight of this node.
-            let latest_cumulative_weight = self.canon.latest_cumulative_weight();
-            // Iterate through the connected peers, to determine if the ledger state is out of date.
-            for (_, peer_state) in self.peers_state.read().await.iter() {
-                if let Some((_, _, Some(_), block_height, block_locators)) = peer_state {
-                    // Retrieve the cumulative weight, defaulting to the block height if it does not exist.
-                    let cumulative_weight = match block_locators.get_cumulative_weight(*block_height) {
-                        Some(cumulative_weight) => cumulative_weight,
-                        None => *block_height as u128,
-                    };
-                    // If the cumulative weight is greater than MAXIMUM_LINEAR_BLOCK_LOCATORS, set the status to `Syncing`.
-                    if cumulative_weight.saturating_sub(latest_cumulative_weight) > MAXIMUM_LINEAR_BLOCK_LOCATORS as u128 {
-                        // Set the status to `Syncing`.
-                        status = State::Syncing;
-                        break;
+            if E::NODE_TYPE != NodeType::Prover {
+                // Retrieve the latest cumulative weight of this node.
+                let latest_cumulative_weight = self.canon.latest_cumulative_weight();
+                // Iterate through the connected peers, to determine if the ledger state is out of date.
+                for (_, peer_state) in self.peers_state.read().await.iter() {
+                    if let Some((_, _, Some(_), block_height, block_locators)) = peer_state {
+                        // Retrieve the cumulative weight, defaulting to the block height if it does not exist.
+                        let cumulative_weight = match block_locators.get_cumulative_weight(*block_height) {
+                            Some(cumulative_weight) => cumulative_weight,
+                            None => *block_height as u128,
+                        };
+                        // If the cumulative weight is greater than MAXIMUM_LINEAR_BLOCK_LOCATORS, set the status to `Syncing`.
+                        if cumulative_weight.saturating_sub(latest_cumulative_weight) > MAXIMUM_LINEAR_BLOCK_LOCATORS as u128 {
+                            // Set the status to `Syncing`.
+                            status = State::Syncing;
+                            break;
+                        }
                     }
                 }
             }
@@ -516,6 +520,10 @@ impl<N: Network, E: Environment> Ledger<N, E> {
         let unconfirmed_block_hash = unconfirmed_block.hash();
         // Retrieve the unconfirmed previous block hash.
         let unconfirmed_previous_block_hash = unconfirmed_block.previous_block_hash();
+
+        if E::NODE_TYPE == NodeType::Prover {
+            return false;
+        }
 
         // Ensure the given block is new.
         if let Ok(true) = self.canon.contains_block_hash(&unconfirmed_block_hash) {
