@@ -164,7 +164,7 @@ impl<N: Network> LedgerState<N> {
         }
 
         // Iterate and append each block hash from genesis to tip to validate ledger state.
-        const INCREMENT: u32 = 2000;
+        const INCREMENT: u32 = 100000;
         let mut start_block_height = 0u32;
         while start_block_height <= latest_block_height {
             // Compute the end block height (inclusive) for this iteration.
