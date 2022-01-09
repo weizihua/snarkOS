@@ -18,18 +18,14 @@
 //!
 //! See [RpcFunctions](../trait.RpcFunctions.html) for documentation of public endpoints.
 
-use crate::{
-    rpc::{rpc::*, rpc_trait::RpcFunctions},
-    Environment,
-    LedgerReader,
-    Peers,
-    ProverRequest,
-    ProverRouter,
-};
+use crate::{rpc::{rpc::*, rpc_trait::RpcFunctions}, Environment, LedgerReader, LedgerRouter, Peers, PeersRequest, ProverRequest, ProverRouter, OperatorRouter, network::Operator};
 use snarkos_storage::Metadata;
 use snarkvm::{
     dpc::{Address, AleoAmount, Block, BlockHeader, Blocks, MemoryPool, Network, Transaction, Transactions, Transition},
     utilities::FromBytes,
+};
+use tokio::{
+    sync::{oneshot}
 };
 
 use jsonrpc_core::Value;
@@ -66,6 +62,9 @@ pub struct RpcInner<N: Network, E: Environment> {
     address: Option<Address<N>>,
     peers: Arc<Peers<N, E>>,
     ledger: LedgerReader<N>,
+    ledger_router: LedgerRouter<N>,
+    operator: Arc<Operator<N, E>>,
+    operator_router: OperatorRouter<N>,
     prover_router: ProverRouter<N>,
     memory_pool: Arc<RwLock<MemoryPool<N>>>,
     /// RPC credentials for accessing guarded endpoints
@@ -93,6 +92,9 @@ impl<N: Network, E: Environment> RpcImpl<N, E> {
         address: Option<Address<N>>,
         peers: Arc<Peers<N, E>>,
         ledger: LedgerReader<N>,
+        ledger_router: LedgerRouter<N>,
+        operator: Arc<Operator<N, E>>,
+        operator_router: OperatorRouter<N>,
         prover_router: ProverRouter<N>,
         memory_pool: Arc<RwLock<MemoryPool<N>>>,
     ) -> Self {
@@ -100,6 +102,9 @@ impl<N: Network, E: Environment> RpcImpl<N, E> {
             address,
             peers,
             ledger,
+            ledger_router,
+            operator,
+            operator_router,
             prover_router,
             memory_pool,
             credentials,
@@ -332,4 +337,71 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcImpl<N, E> {
         }
         Ok(transaction.transaction_id())
     }
+
+    async fn connect(&self, peers: Vec<serde_json::Value>) -> Result<bool, RpcError> {
+        for peer_ip in &peers {
+            let peer_ip = peer_ip.to_string();
+            let (router, _handler) = oneshot::channel();
+            let addr: Result<SocketAddr, std::net::AddrParseError> = peer_ip[1..peer_ip.len() - 1].parse();
+            let res = match addr {
+                Ok(addr) => addr,
+                Err(error) => {
+                    panic!("{}", error.to_string());
+                }
+            };
+            if let Err(error) = self.peers.router().send(PeersRequest::Connect(res, self.ledger.clone(), self.ledger_router.clone(), self.operator_router.clone(), self.prover_router.clone(), router)).await {
+                warn!("Connect {}", error);
+            }
+        }
+        Ok(true)
+    }
+
+    async fn get_share_for_prover(&self, prover: Value) -> Result<u64, RpcError> {
+        let prover: Address<N> = serde_json::from_value(prover)?;
+        Ok(self.operator.get_shares_for_prover(&prover))
+    }
+
+    async fn get_shares(&self) -> Result<u64, RpcError> {
+        let shares = self.operator.to_shares();
+        let mut res = 0;
+        for (_, share) in shares {
+            res += share.values().sum::<u64>();
+        }
+        Ok(res)
+    }
+
+    async fn get_provers(&self) -> Result<Value, RpcError> {
+        let provers = self.operator.get_provers();
+        Ok(serde_json::json!(provers))
+    }
+
+    // /// Returns the current mempool and sync information known by this node.
+    // async fn get_block_template(&self) -> Result<BlockTemplate, RpcError> {
+    //     let canon = self.storage.canon().await?;
+    //
+    //     let block = self.storage.get_block_header(&canon.hash).await?;
+    //
+    //     let time = Utc::now().timestamp();
+    //
+    //     let full_transactions = self.node.expect_sync().consensus.fetch_memory_pool().await;
+    //
+    //     let transaction_strings = full_transactions
+    //         .iter()
+    //         .map(|x| Ok(hex::encode(to_bytes_le![x]?)))
+    //         .collect::<Result<Vec<_>, RpcError>>()?;
+    //
+    //     let mut coinbase_value = get_block_reward(canon.block_height as u32 + 1);
+    //     for transaction in full_transactions.iter() {
+    //         coinbase_value = coinbase_value.add(transaction.value_balance)
+    //     }
+    //
+    //     Ok(BlockTemplate {
+    //         previous_block_hash: hex::encode(&block.hash().0),
+    //         block_height: canon.block_height as u32 + 1,
+    //         time,
+    //         difficulty_target: self.consensus_parameters()?.get_block_difficulty(&block, time),
+    //         transactions: transaction_strings,
+    //         coinbase_value: coinbase_value.0 as u64,
+    //     })
+    // }
 }

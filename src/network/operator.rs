@@ -237,6 +237,10 @@ impl<N: Network, E: Environment> Operator<N, E> {
         self.state.get_shares_for_prover(&self.ledger_reader, prover)
     }
 
+    pub fn get_provers(&self) -> Vec<Address<N>> {
+        self.state.get_provers()
+    }
+
     ///
     /// Performs the given `request` to the operator.
     /// All requests must go through this `update`, so that a unified view is preserved.

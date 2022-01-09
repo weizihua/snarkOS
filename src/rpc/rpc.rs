@@ -16,13 +16,7 @@
 
 //! Logic for instantiating the RPC server.
 
-use crate::{
-    rpc::{rpc_impl::RpcImpl, rpc_trait::RpcFunctions},
-    Environment,
-    LedgerReader,
-    Peers,
-    ProverRouter,
-};
+use crate::{rpc::{rpc_impl::RpcImpl, rpc_trait::RpcFunctions}, Environment, LedgerReader, LedgerRouter, Peers, ProverRouter, OperatorRouter, network::Operator};
 use snarkvm::dpc::{Address, MemoryPool, Network};
 
 use hyper::{
@@ -54,7 +48,7 @@ pub struct Meta {
 
 impl Metadata for Meta {}
 
-const METHODS_EXPECTING_PARAMS: [&str; 12] = [
+const METHODS_EXPECTING_PARAMS: [&str; 14] = [
     // public
     "getblock",
     "getblocks",
@@ -72,7 +66,9 @@ const METHODS_EXPECTING_PARAMS: [&str; 12] = [
     // "createtransaction",
     // "getrawrecord",
     // "decryptrecord",
-    // "connect",
+    // "disconnect",
+    "connect",
+    "getshareforprover",
 ];
 
 /// Starts a local RPC HTTP server at `rpc_port` in a dedicated `tokio` task.
@@ -85,11 +81,14 @@ pub async fn initialize_rpc_server<N: Network, E: Environment>(
     address: Option<Address<N>>,
     peers: &Arc<Peers<N, E>>,
     ledger: LedgerReader<N>,
+    ledger_router: LedgerRouter<N>,
+    operator: Arc<Operator<N, E>>,
+    operator_router: OperatorRouter<N>,
     prover_router: ProverRouter<N>,
     memory_pool: Arc<RwLock<MemoryPool<N>>>,
 ) -> tokio::task::JoinHandle<()> {
     let credentials = RpcCredentials { username, password };
-    let rpc = RpcImpl::new(credentials, address, peers.clone(), ledger, prover_router, memory_pool);
+    let rpc = RpcImpl::new(credentials, address, peers.clone(), ledger, ledger_router, operator, operator_router, prover_router, memory_pool);
 
     let service = make_service_fn(move |conn: &AddrStream| {
         let caller = conn.remote_addr();
@@ -347,13 +346,25 @@ async fn handle_rpc<N: Network, E: Environment>(
         //         .map_err(convert_core_err);
         //     result_to_response(&req, result)
         // }
-        // "connect" => {
-        //     let result = rpc
-        //         .connect_protected(Params::Array(params), meta)
-        //         .await
-        //         .map_err(convert_core_err);
-        //     result_to_response(&req, result)
-        // }
+        "connect" => {
+            let result = rpc
+                .connect(params)
+                .await
+                .map_err(convert_crate_err);
+            result_to_response(&req, result)
+        }
+        "getshareforprover" => {
+            let result = rpc.get_share_for_prover(params.remove(0)).await.map_err(convert_crate_err);
+            result_to_response(&req, result)
+        }
+        "getshares" => {
+            let result = rpc.get_shares().await.map_err(convert_crate_err);
+            result_to_response(&req, result)
+        }
+        "getprovers" => {
+            let result = rpc.get_provers().await.map_err(convert_crate_err);
+            result_to_response(&req, result)
+        }
         _ => {
             let err = jrt::Error::from_code(jrt::ErrorCode::MethodNotFound);
             jrt::Response::error(jrt::Version::V2, err, req.id.clone())

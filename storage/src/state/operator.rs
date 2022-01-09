@@ -76,6 +76,10 @@ impl<N: Network> OperatorState<N> {
     pub fn remove_shares(&self, block_height: u32, coinbase_record: Record<N>) -> Result<()> {
         self.shares.remove_shares(block_height, coinbase_record)
     }
+
+    pub fn get_provers(&self) -> Vec<Address<N>> {
+        self.shares.get_provers()
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -147,5 +151,14 @@ impl<N: Network> SharesState<N> {
     /// Removes all of the shares for a given block height and coinbase record.
     fn remove_shares(&self, block_height: u32, coinbase_record: Record<N>) -> Result<()> {
         self.shares.remove(&(block_height, coinbase_record))
+    }
+
+    fn get_provers(&self) -> Vec<Address<N>> {
+        let set: HashSet<Address<N>> = self
+            .shares
+            .iter()
+            .flat_map(|((_, _), shares)| shares.keys().copied().collect::<Vec<_>>())
+            .collect();
+        Vec::from_iter(set)
     }
 }
