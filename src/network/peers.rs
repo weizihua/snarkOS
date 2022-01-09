@@ -253,7 +253,12 @@ impl<N: Network, E: Environment> Peers<N, E> {
                     debug!("Skipping connection request to {} (attempted to self-connect)", peer_ip);
                 }
                 // Ensure the node does not surpass the maximum number of peer connections.
-                else if self.number_of_connected_peers().await >= E::MAXIMUM_NUMBER_OF_PEERS {
+                else if self
+                    .number_of_connected_peers()
+                    .await
+                    .saturating_sub(self.prover_peers.read().await.len())
+                    >= E::MAXIMUM_NUMBER_OF_PEERS
+                {
                     debug!("Skipping connection request to {} (maximum peers reached)", peer_ip);
                 }
                 // Ensure the peer is a new connection.
@@ -317,7 +322,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
                 // Obtain the number of connected peers.
                 let number_of_connected_peers = self.number_of_connected_peers().await;
                 // Ensure the number of connected peers is below the maximum threshold.
-                if number_of_connected_peers > E::MAXIMUM_NUMBER_OF_PEERS {
+                if number_of_connected_peers.saturating_sub(self.prover_peers.read().await.len()) > E::MAXIMUM_NUMBER_OF_PEERS {
                     debug!("Exceeded maximum number of connected peers");
 
                     // Determine the peers to disconnect from.
