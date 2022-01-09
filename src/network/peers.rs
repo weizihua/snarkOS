@@ -321,13 +321,28 @@ impl<N: Network, E: Environment> Peers<N, E> {
                     debug!("Exceeded maximum number of connected peers");
 
                     // Determine the peers to disconnect from.
-                    let num_excess_peers = number_of_connected_peers.saturating_sub(E::MAXIMUM_NUMBER_OF_PEERS);
+                    let num_excess_peers = number_of_connected_peers.saturating_sub(self.prover_peers.read().await.len()).saturating_sub(E::MAXIMUM_NUMBER_OF_PEERS);
                     let peer_ips_to_disconnect = self
                         .connected_peers
                         .read()
                         .await
                         .iter()
-                        .filter(|(peer_ip, _)| !E::sync_nodes().contains(peer_ip) && !E::beacon_nodes().contains(peer_ip))
+                        .filter(|(peer_ip, _)| {
+                            if E::sync_nodes().contains(peer_ip) {
+                                return false;
+                            } else if !E::beacon_nodes().contains(peer_ip) {
+                                return false;
+                            } else {
+                                return match self.prover_peers.try_read() {
+                                    Ok(peers) => {
+                                        !peers.contains(peer_ip)
+                                    }
+                                    Err(_) => {
+                                        false
+                                    }
+                                }
+                            }
+                        })
                         .take(num_excess_peers)
                         .map(|(&peer_ip, _)| peer_ip)
                         .collect::<Vec<SocketAddr>>();
@@ -437,7 +452,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
                     debug!("Skipping connection request to {} (attempted to self-connect)", peer_ip);
                 }
                 // Ensure the node does not surpass the maximum number of peer connections.
-                else if self.number_of_connected_peers().await >= E::MAXIMUM_NUMBER_OF_PEERS {
+                else if E::NODE_TYPE != NodeType::Operator && self.number_of_connected_peers().await >= E::MAXIMUM_NUMBER_OF_PEERS {
                     debug!("Dropping connection request from {} (maximum peers reached)", peer_ip);
                 }
                 // Ensure the node is not already connected to this peer.
