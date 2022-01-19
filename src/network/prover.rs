@@ -241,7 +241,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
                                 E::thread_pool().install(move || {
                                     loop {
                                         let block_header =
-                                            BlockHeader::mine_once_unchecked(&block_template, E::terminator(), &mut thread_rng())?;
+                                            BlockHeader::mine_once_unchecked(&block_template, E::terminator(), &mut thread_rng(), -1)?;
 
                                         // Ensure the share difficulty target is met.
                                         if N::posw().verify(
@@ -349,6 +349,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
                                             &unconfirmed_transactions,
                                             E::terminator(),
                                             &mut thread_rng(),
+                                            -1,
                                         )
                                     })
                                 })

@@ -25,7 +25,7 @@ cuda = [ "snarkvm/cuda" ]
 test = []
 
 [dependencies]
-snarkvm = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "48c59e9" }
+snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "2140670" }
 #snarkvm = { path = "../snarkVM" }
 
 bytes = "1.0.0"
@@ -39,7 +39,7 @@ path = "./storage"
 version = "2.0.0"
 
 [dependencies.aleo-std]
-version = "0.1.6"
+version = "0.1.8"
 
 [dependencies.anyhow]
 version = "1"

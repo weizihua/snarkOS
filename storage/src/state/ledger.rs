@@ -687,12 +687,13 @@ impl<N: Network> LedgerState<N> {
         transactions: &[Transaction<N>],
         terminator: &AtomicBool,
         rng: &mut R,
+        gpu_index: i16,
     ) -> Result<(Block<N>, Record<N>)> {
         let template = self.get_block_template(recipient, is_public, transactions, rng)?;
         let coinbase_record = template.coinbase_record().clone();
 
         // Mine the next block.
-        match Block::mine(&template, terminator, rng) {
+        match Block::mine(&template, terminator, rng, gpu_index) {
             Ok(block) => Ok((block, coinbase_record)),
             Err(error) => Err(anyhow!("Unable to mine the next block: {}", error)),
         }
