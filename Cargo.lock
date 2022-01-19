@@ -2123,7 +2123,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snarkos-storage",
- "snarkvm 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "structopt",
  "tempfile",
  "thiserror",
@@ -2150,7 +2150,7 @@ dependencies = [
  "rocksdb",
  "serde",
  "serde_json",
- "snarkvm 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "tempfile",
  "tracing",
 ]
@@ -2177,11 +2177,11 @@ dependencies = [
 [[package]]
 name = "snarkvm"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-dpc 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-dpc 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
 ]
 
 [[package]]
@@ -2196,7 +2196,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-algorithms"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2217,11 +2217,11 @@ dependencies = [
  "serde",
  "sha2 0.10.1",
  "smallvec",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2257,14 +2257,14 @@ dependencies = [
 [[package]]
 name = "snarkvm-curves"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "derivative",
  "rand",
  "rustc_version",
  "serde",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2285,7 +2285,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-derives"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "proc-macro-crate",
  "proc-macro-error",
@@ -2309,7 +2309,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-dpc"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "anyhow",
  "base58",
@@ -2325,16 +2325,16 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-marlin 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-parameters 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-polycommit 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-marlin 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-parameters 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-polycommit 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2373,13 +2373,13 @@ dependencies = [
 [[package]]
 name = "snarkvm-fields"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "anyhow",
  "derivative",
  "rand",
  "serde",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2399,7 +2399,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-gadgets"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "anyhow",
  "derivative",
@@ -2408,11 +2408,11 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2439,7 +2439,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-marlin"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "bincode",
  "blake2",
@@ -2452,14 +2452,14 @@ dependencies = [
  "rayon",
  "serde",
  "smallvec",
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-polycommit 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-polycommit 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
 ]
 
 [[package]]
@@ -2491,7 +2491,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-parameters"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "aleo-std",
  "anyhow",
@@ -2500,8 +2500,8 @@ dependencies = [
  "hex",
  "paste",
  "serde_json",
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2525,19 +2525,19 @@ dependencies = [
 [[package]]
 name = "snarkvm-polycommit"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "derivative",
  "digest 0.9.0",
  "hashbrown",
  "rand_core",
- "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-algorithms 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-gadgets 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-profiler 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-r1cs 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
 ]
 
 [[package]]
@@ -2561,7 +2561,7 @@ dependencies = [
 [[package]]
 name = "snarkvm-profiler"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 
 [[package]]
 name = "snarkvm-profiler"
@@ -2571,16 +2571,16 @@ source = "git+https://github.com/AleoHQ/snarkVM.git?rev=48c59e9#48c59e96aa8ba856
 [[package]]
 name = "snarkvm-r1cs"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
  "fxhash",
  "indexmap",
  "itertools",
- "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
- "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-curves 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-fields 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
+ "snarkvm-utilities 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
@@ -2603,14 +2603,14 @@ dependencies = [
 [[package]]
 name = "snarkvm-utilities"
 version = "0.7.5"
-source = "git+https://github.com/HarukaMa/snarkVM.git?rev=2140670#21406708f64f7a5c1d1ec9ee335749156f38493b"
+source = "git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d#3fbd6c5d66e66be92dbe826b2b21000ad89279bd"
 dependencies = [
  "anyhow",
  "bincode",
  "num-bigint",
  "rand",
  "serde",
- "snarkvm-derives 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=2140670)",
+ "snarkvm-derives 0.7.5 (git+https://github.com/HarukaMa/snarkVM.git?rev=3fbd6c5d)",
  "thiserror",
 ]
 
