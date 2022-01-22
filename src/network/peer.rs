@@ -17,20 +17,10 @@
 use crate::{
     helpers::{NodeType, State, Status},
     network::{
-        ConnectionResult,
-        LedgerReader,
-        LedgerRequest,
-        LedgerRouter,
-        Message,
-        OperatorRequest,
-        OperatorRouter,
-        PeersRequest,
-        PeersRouter,
-        ProverRequest,
-        ProverRouter,
+        ConnectionResult, LedgerReader, LedgerRequest, LedgerRouter, Message, OperatorRequest, OperatorRouter, PeersRequest, PeersRouter,
+        ProverRequest, ProverRouter,
     },
-    Data,
-    Environment,
+    Data, Environment,
 };
 use snarkvm::dpc::prelude::*;
 
@@ -273,30 +263,30 @@ impl<N: Network, E: Environment> Peer<N, E> {
         };
 
         // Wait for the challenge response to come in.
-        match outbound_socket.next().await {
-            Some(Ok(message)) => {
-                // Process the message.
-                trace!("Received '{}-A' from {}", message.name(), peer_ip);
-                match message {
-                    Message::ChallengeResponse(block_header) => {
-                        // Perform the deferred non-blocking deserialization of the block header.
-                        let block_header = block_header.deserialize().await?;
-                        match &block_header == genesis_header {
-                            true => Ok((peer_ip, peer_nonce, node_type, status)),
-                            false => Err(anyhow!("Challenge response from {} failed, received '{}'", peer_ip, block_header)),
+        loop {
+            match outbound_socket.next().await {
+                Some(Ok(message)) => {
+                    // Process the message.
+                    trace!("Received '{}-A' from {}", message.name(), peer_ip);
+                    match message {
+                        Message::ChallengeResponse(block_header) => {
+                            // Perform the deferred non-blocking deserialization of the block header.
+                            let block_header = block_header.deserialize().await?;
+                            match &block_header == genesis_header {
+                                true => return Ok((peer_ip, peer_nonce, node_type, status)),
+                                false => return Err(anyhow!("Challenge response from {} failed, received '{}'", peer_ip, block_header)),
+                            }
+                        }
+                        message => {
+                            warn!("Expected challenge response, received '{}' from {}", message.name(), peer_ip);
                         }
                     }
-                    message => Err(anyhow!(
-                        "Expected challenge response, received '{}' from {}",
-                        message.name(),
-                        peer_ip
-                    )),
                 }
+                // An error occurred.
+                Some(Err(error)) => return Err(anyhow!("Failed to get challenge response from {}: {:?}", peer_ip, error)),
+                // Did not receive anything.
+                None => return Err(anyhow!("Failed to get challenge response from {}, peer has disconnected", peer_ip)),
             }
-            // An error occurred.
-            Some(Err(error)) => Err(anyhow!("Failed to get challenge response from {}: {:?}", peer_ip, error)),
-            // Did not receive anything.
-            None => Err(anyhow!("Failed to get challenge response from {}, peer has disconnected", peer_ip)),
         }
     }
 
