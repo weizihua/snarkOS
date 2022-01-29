@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ use snarkvm::dpc::{posw::PoSWProof, prelude::*};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
-use rayon::ThreadPoolBuilder;
+use rayon::{ThreadPool, ThreadPoolBuilder};
 use std::{
     net::SocketAddr,
     path::Path,
@@ -66,6 +66,8 @@ pub struct Prover<N: Network, E: Environment> {
     address: Option<Address<N>>,
     /// The IP address of the connected pool.
     pool: Option<SocketAddr>,
+    /// The thread pool for the prover.
+    thread_pool: Arc<ThreadPool>,
     /// The prover router of the node.
     prover_router: ProverRouter<N>,
     /// The pool of unconfirmed transactions.
@@ -103,6 +105,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
             state: Arc::new(ProverState::open_writer::<S, P>(path)?),
             address,
             pool: pool_ip,
+            thread_pool: Arc::new(thread_pool),
             prover_router,
             memory_pool: Arc::new(RwLock::new(MemoryPool::new())),
             peers_router,
@@ -326,7 +329,7 @@ impl<N: Network, E: Environment> Prover<N, E> {
             match self.memory_pool.write().await.add_transaction(&transaction) {
                 Ok(()) => {
                     // Upon success, propagate the unconfirmed transaction to the connected peers.
-                    let request = PeersRequest::MessagePropagate(peer_ip, Message::UnconfirmedTransaction(transaction));
+                    let request = PeersRequest::MessagePropagate(peer_ip, Message::UnconfirmedTransaction(Data::Object(transaction)));
                     if let Err(error) = self.peers_router.send(request).await {
                         warn!("[UnconfirmedTransaction] {}", error);
                     }

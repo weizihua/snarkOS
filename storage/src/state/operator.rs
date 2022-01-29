@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -82,6 +82,7 @@ impl<N: Network> OperatorState<N> {
         self.shares.remove_shares(block_height, coinbase_record)
     }
 
+    /// Returns a list of provers which have submitted shares to an operator.
     pub fn get_provers(&self) -> Vec<Address<N>> {
         self.shares.get_provers()
     }

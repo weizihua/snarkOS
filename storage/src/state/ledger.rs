@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -1226,6 +1226,30 @@ impl<N: Network> LedgerState<N> {
     // rocksdb.
     pub fn shut_down(&self) -> Arc<RwLock<()>> {
         self.map_lock.clone()
+    }
+
+    ///
+    /// Dump the specified number of blocks to the given location.
+    ///
+    #[cfg(test)]
+    #[allow(dead_code)]
+    fn dump_blocks<P: AsRef<Path>>(&self, path: P, count: u32) -> Result<()> {
+        let mut file = std::fs::File::create(path)?;
+        let mut blocks = Vec::with_capacity(count as usize);
+
+        println!("Commencing block dump");
+        for i in 1..count {
+            if i % 10 == 0 {
+                println!("Dumping block {}/{}", i, count);
+            }
+            let block = self.get_block(i)?;
+            blocks.push(block);
+        }
+        println!("Block dump complete");
+
+        bincode::serialize_into(&mut file, &blocks)?;
+
+        Ok(())
     }
 }
 

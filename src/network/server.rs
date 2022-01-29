@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -171,6 +171,10 @@ impl<N: Network, E: Environment> Server<N, E> {
         .await;
         // Initialize a new instance of the notification.
         Self::initialize_notification(ledger.reader(), prover.clone(), address).await;
+
+        // Initialise the metrics exporter.
+        #[cfg(feature = "prometheus")]
+        Self::initialize_metrics();
 
         Ok(Self {
             local_ip,
@@ -420,5 +424,10 @@ impl<N: Network, E: Environment> Server<N, E> {
         }));
         // Wait until the heartbeat task is ready.
         let _ = handler.await;
+    }
+
+    #[cfg(feature = "prometheus")]
+    fn initialize_metrics() {
+        E::tasks().append(snarkos_metrics::initialize().expect("couldn't initialise the metrics"));
     }
 }
