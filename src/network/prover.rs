@@ -16,19 +16,14 @@
 
 use crate::{
     helpers::{NodeType, State},
-    Data,
-    Environment,
-    LedgerReader,
-    LedgerRouter,
-    Message,
-    PeersRequest,
-    PeersRouter,
+    Data, Environment, LedgerReader, LedgerRouter, Message, PeersRequest, PeersRouter,
 };
 use snarkos_storage::{storage::Storage, ProverState};
 use snarkvm::dpc::{posw::PoSWProof, prelude::*};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
+use rayon::ThreadPoolBuilder;
 use std::{
     net::SocketAddr,
     path::Path,
