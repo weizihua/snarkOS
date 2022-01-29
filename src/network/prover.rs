@@ -29,7 +29,6 @@ use snarkvm::dpc::{posw::PoSWProof, prelude::*};
 
 use anyhow::{anyhow, Result};
 use rand::thread_rng;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use std::{
     net::SocketAddr,
     path::Path,
@@ -72,8 +71,6 @@ pub struct Prover<N: Network, E: Environment> {
     address: Option<Address<N>>,
     /// The IP address of the connected pool.
     pool: Option<SocketAddr>,
-    /// The thread pool for the prover.
-    thread_pool: Arc<ThreadPool>,
     /// The prover router of the node.
     prover_router: ProverRouter<N>,
     /// The pool of unconfirmed transactions.
@@ -111,7 +108,6 @@ impl<N: Network, E: Environment> Prover<N, E> {
             state: Arc::new(ProverState::open_writer::<S, P>(path)?),
             address,
             pool: pool_ip,
-            thread_pool: Arc::new(thread_pool),
             prover_router,
             memory_pool: Arc::new(RwLock::new(MemoryPool::new())),
             peers_router,

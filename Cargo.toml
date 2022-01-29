@@ -21,10 +21,11 @@ members = ["storage", "testing"]
 
 [features]
 default = []
+cuda = [ "snarkvm/cuda" ]
 test = []
 
 [dependencies]
-snarkvm = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "459ea96" }
+snarkvm = { git = "https://github.com/AleoHQ/snarkVM.git", rev = "48c59e9" }
 #snarkvm = { path = "../snarkVM" }
 
 bytes = "1.0.0"
@@ -71,7 +72,7 @@ version = "0.14"
 features = [ "http1", "runtime", "server", "tcp" ]
 
 [dependencies.json-rpc-types]
-version = "1.0"
+version = "1.0.2"
 
 [dependencies.jsonrpc-core]
 version = "18"

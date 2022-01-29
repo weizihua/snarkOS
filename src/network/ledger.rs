@@ -15,7 +15,7 @@
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    helpers::{block_requests::*, CircularMap, NodeType, State},
+    helpers::{block_requests::*, BlockRequest, CircularMap, NodeType, State},
     Data,
     Environment,
     LedgerReader,
@@ -32,7 +32,6 @@ use anyhow::Result;
 use chrono::Utc;
 use std::{
     collections::HashMap,
-    hash::{Hash, Hasher},
     net::SocketAddr,
     path::Path,
     sync::{atomic::Ordering, Arc},
@@ -69,49 +68,6 @@ pub enum LedgerRequest<N: Network> {
     Pong(SocketAddr, NodeType, State, Option<bool>, BlockLocators<N>),
     /// UnconfirmedBlock := (peer_ip, block, prover_router)
     UnconfirmedBlock(SocketAddr, Block<N>, ProverRouter<N>),
-}
-
-///
-/// A request for a block with the specified height and possibly a hash.
-///
-#[derive(Clone, Debug)]
-pub struct BlockRequest<N: Network> {
-    block_height: u32,
-    block_hash: Option<N::BlockHash>,
-}
-
-// The height is the primary key, so use only it for hashing purposes.
-impl<N: Network> PartialEq for BlockRequest<N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.block_height == other.block_height
-    }
-}
-
-impl<N: Network> Eq for BlockRequest<N> {}
-
-// The k1 == k2 -> hash(k1) == hash(k2) rule must hold.
-impl<N: Network> Hash for BlockRequest<N> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.block_height.hash(state);
-    }
-}
-
-impl<N: Network> From<u32> for BlockRequest<N> {
-    fn from(height: u32) -> Self {
-        Self {
-            block_height: height,
-            block_hash: None,
-        }
-    }
-}
-
-impl<N: Network> From<(u32, Option<N::BlockHash>)> for BlockRequest<N> {
-    fn from((height, hash): (u32, Option<N::BlockHash>)) -> Self {
-        Self {
-            block_height: height,
-            block_hash: hash,
-        }
-    }
 }
 
 pub type PeersState<N> = HashMap<SocketAddr, Option<(NodeType, State, Option<bool>, u32, BlockLocators<N>)>>;
@@ -545,8 +501,8 @@ impl<N: Network, E: Environment> Ledger<N, E> {
             'outer: for requests in self.block_requests.read().await.values() {
                 for request in requests.keys() {
                     // If the unconfirmed block conflicts with a requested block on a fork, skip.
-                    if request.block_height == unconfirmed_block_height {
-                        if let Some(requested_block_hash) = request.block_hash {
+                    if request.block_height() == unconfirmed_block_height {
+                        if let Some(requested_block_hash) = request.block_hash() {
                             if unconfirmed_block.hash() != requested_block_hash {
                                 is_block_on_fork = true;
                                 break 'outer;
@@ -728,20 +684,9 @@ impl<N: Network, E: Environment> Ledger<N, E> {
             // If the given fork status is None, check if it can be updated.
             let is_fork = match is_fork {
                 Some(is_fork) => Some(is_fork),
-                None => match common_ancestor == latest_block_height_of_peer {
-                    // If the common ancestor matches the latest block height of the peer,
-                    // the peer is clearly on the same canonical chain as this node.
-                    true => Some(false),
-                    false => None,
-                },
-            };
-
-            // If the given fork status is None, check if it can be updated.
-            let is_fork = match is_fork {
-                Some(is_fork) => Some(is_fork),
-                None => match common_ancestor == self.canon.latest_block_height() {
-                    // If the common ancestor matches the latest block height of this node,
-                    // the peer is likely on the same canonical chain as this node.
+                None => match common_ancestor == latest_block_height_of_peer || common_ancestor == self.canon.latest_block_height() {
+                    // If the common ancestor matches the latest block height of (the peer || this node),
+                    // the peer (is clearly || is likely) on the same canonical chain as this node.
                     true => Some(false),
                     false => None,
                 },
