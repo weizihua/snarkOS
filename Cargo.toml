@@ -25,7 +25,7 @@ cuda = [ "snarkvm/cuda" ]
 test = []
 
 [dependencies]
-snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "02721d37" }
+snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "3ffd025b" }
 #snarkvm = { path = "../snarkVM" }
 
 bytes = "1.0.0"
