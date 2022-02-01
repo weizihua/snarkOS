@@ -15,16 +15,7 @@
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    helpers::NodeType,
-    Data,
-    Environment,
-    LedgerReader,
-    LedgerRequest,
-    LedgerRouter,
-    Message,
-    PeersRequest,
-    PeersRouter,
-    ProverRouter,
+    helpers::NodeType, Data, Environment, LedgerReader, LedgerRequest, LedgerRouter, Message, PeersRequest, PeersRouter, ProverRouter,
 };
 use snarkos_storage::{storage::Storage, OperatorState};
 use snarkvm::dpc::{prelude::*, PoSWProof};
@@ -58,6 +49,8 @@ pub enum OperatorRequest<N: Network> {
     PoolRegister(SocketAddr, Address<N>),
     /// PoolResponse := (peer_ip, prover_address, nonce, proof)
     PoolResponse(SocketAddr, Address<N>, N::PoSWNonce, PoSWProof<N>),
+    /// PoolBlock := (nonce, proof)
+    PoolBlock(N::PoSWNonce, PoSWProof<N>),
 }
 
 /// The predefined base share difficulty.
@@ -189,8 +182,12 @@ impl<N: Network, E: Environment> Operator<N, E> {
                                     operator.known_nonces.write().await.clear();
 
                                     // Route a `PoolRequest` to the peer.
-                                    let message = Message::PoolRequest(BASE_SHARE_DIFFICULTY, Data::Object(block_template));
+                                    let message = Message::PoolRequest(BASE_SHARE_DIFFICULTY, Data::Object(block_template.clone()));
                                     if let Err(error) = peers_router.send(PeersRequest::MessagePropagateProver(message)).await {
+                                        warn!("Failed to propagate PoolRequest: {}", error);
+                                    }
+                                    let pool_message = Message::NewBlockTemplate(Data::Object(block_template));
+                                    if let Err(error) = peers_router.send(PeersRequest::MessagePropagatePoolServer(pool_message)).await {
                                         warn!("Failed to propagate PoolRequest: {}", error);
                                     }
                                 }
@@ -341,6 +338,30 @@ impl<N: Network, E: Environment> Operator<N, E> {
                     }
                 } else {
                     warn!("[PoolResponse] No current block template exists");
+                }
+            }
+            OperatorRequest::PoolBlock(nonce, proof) => {
+                if let Some(block_template) = self.block_template.read().await.clone() {
+                    let previous_block_hash = block_template.previous_block_hash();
+                    let transactions = block_template.transactions().clone();
+                    if let Ok(block_header) = BlockHeader::<N>::from(
+                        block_template.previous_ledger_root(),
+                        block_template.transactions().transactions_root(),
+                        BlockHeaderMetadata::new(&block_template),
+                        nonce,
+                        proof,
+                    ) {
+                        if let Ok(block) = Block::from(previous_block_hash, block_header, transactions) {
+                            info!("Operator has found unconfirmed block {} ({})", block.height(), block.hash());
+                            let request = LedgerRequest::UnconfirmedBlock(self.local_ip, block, self.prover_router.clone());
+                            self.ledger_reader.invalidate_coinbase_cache();
+                            if let Err(error) = self.ledger_router.send(request).await {
+                                warn!("Failed to broadcast mined block - {}", error);
+                            }
+                        }
+                    }
+                } else {
+                    warn!("[PoolBlock] No current block template exists");
                 }
             }
         }

@@ -61,6 +61,7 @@ pub enum PeersRequest<N: Network, E: Environment> {
     /// MessagePropagate := (peer_ip, message)
     MessagePropagate(SocketAddr, Message<N, E>),
     MessagePropagateProver(Message<N, E>),
+    MessagePropagatePoolServer(Message<N, E>),
     /// MessageSend := (peer_ip, message)
     MessageSend(SocketAddr, Message<N, E>),
     /// PeerConnecting := (stream, peer_ip, ledger_reader, ledger_router, operator_router, prover_router)
@@ -75,6 +76,7 @@ pub enum PeersRequest<N: Network, E: Environment> {
     /// PeerConnected := (peer_ip, peer_nonce, outbound_router)
     PeerConnected(SocketAddr, u64, OutboundRouter<N, E>),
     PeerIsProver(SocketAddr),
+    PeerIsPoolServer(SocketAddr),
     /// PeerDisconnected := (peer_ip)
     PeerDisconnected(SocketAddr),
     /// PeerRestricted := (peer_ip)
@@ -102,6 +104,7 @@ pub struct Peers<N: Network, E: Environment> {
     /// The set of restricted peer IPs.
     restricted_peers: RwLock<HashMap<SocketAddr, Instant>>,
     prover_peers: RwLock<HashSet<SocketAddr>>,
+    poolserver_peers: RwLock<HashSet<SocketAddr>>,
     /// The map of peers to their first-seen port number, number of attempts, and timestamp of the last inbound connection request.
     seen_inbound_connections: RwLock<HashMap<SocketAddr, ((u16, u32), SystemTime)>>,
     /// The map of peers to the timestamp of their last outbound connection request.
@@ -131,6 +134,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
             candidate_peers: Default::default(),
             restricted_peers: Default::default(),
             prover_peers: Default::default(),
+            poolserver_peers: Default::default(),
             seen_inbound_connections: Default::default(),
             seen_outbound_connections: Default::default(),
         });
@@ -442,6 +446,9 @@ impl<N: Network, E: Environment> Peers<N, E> {
             PeersRequest::MessagePropagateProver(message) => {
                 self.propagate_prover(message).await;
             }
+            PeersRequest::MessagePropagatePoolServer(message) => {
+                self.propagate_pool_server(message).await;
+            }
             PeersRequest::MessageSend(sender, message) => {
                 self.send(sender, message).await;
             }
@@ -533,12 +540,17 @@ impl<N: Network, E: Environment> Peers<N, E> {
                 // Add an entry for this `Peer` in the prover peers.
                 self.prover_peers.write().await.insert(peer_ip);
             }
+            PeersRequest::PeerIsPoolServer(peer_ip) => {
+                // Add an entry for this `Peer` in the pool server peers.
+                self.poolserver_peers.write().await.insert(peer_ip);
+            }
             PeersRequest::PeerDisconnected(peer_ip) => {
                 // Remove an entry for this `Peer` in the connected peers, if it exists.
                 self.connected_peers.write().await.remove(&peer_ip);
                 // Add an entry for this `Peer` in the candidate peers.
                 self.candidate_peers.write().await.insert(peer_ip);
                 self.prover_peers.write().await.remove(&peer_ip);
+                self.poolserver_peers.write().await.remove(&peer_ip);
             }
             PeersRequest::PeerRestricted(peer_ip) => {
                 // Remove an entry for this `Peer` in the connected peers, if it exists.
@@ -621,6 +633,15 @@ impl<N: Network, E: Environment> Peers<N, E> {
         // Iterate through all provers.
         for peer in self.connected_peers().await.iter() {
             if self.prover_peers.read().await.contains(peer) {
+                self.send(*peer, message.clone()).await;
+            }
+        }
+    }
+
+    async fn propagate_pool_server(&self, message: Message<N, E>) {
+        // Iterate through all pool servers.
+        for peer in self.connected_peers().await.iter() {
+            if self.poolserver_peers.read().await.contains(peer) {
                 self.send(*peer, message.clone()).await;
             }
         }

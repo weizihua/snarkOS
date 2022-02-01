@@ -112,6 +112,8 @@ pub enum Message<N: Network, E: Environment> {
     PoolRequest(u64, Data<BlockTemplate<N>>),
     /// PoolResponse := (address, nonce, proof)
     PoolResponse(Address<N>, N::PoSWNonce, Data<PoSWProof<N>>),
+    NewBlockTemplate(Data<BlockTemplate<N>>),
+    PoolBlock(N::PoSWNonce, Data<PoSWProof<N>>),
     /// Unused
     #[allow(unused)]
     Unused(PhantomData<E>),
@@ -136,6 +138,8 @@ impl<N: Network, E: Environment> Message<N, E> {
             Self::PoolRegister(..) => "PoolRegister",
             Self::PoolRequest(..) => "PoolRequest",
             Self::PoolResponse(..) => "PoolResponse",
+            Self::NewBlockTemplate(..) => "NewBlockTemplate",
+            Self::PoolBlock(..) => "PoolBlock",
             Self::Unused(..) => "Unused",
         }
     }
@@ -158,6 +162,8 @@ impl<N: Network, E: Environment> Message<N, E> {
             Self::PoolRegister(..) => 11,
             Self::PoolRequest(..) => 12,
             Self::PoolResponse(..) => 13,
+            Self::NewBlockTemplate(..) => 100,
+            Self::PoolBlock(..) => 101,
             Self::Unused(..) => 14,
         }
     }
@@ -210,6 +216,11 @@ impl<N: Network, E: Environment> Message<N, E> {
             }
             Self::PoolResponse(address, nonce, proof) => {
                 bincode::serialize_into(&mut *writer, address)?;
+                bincode::serialize_into(&mut *writer, nonce)?;
+                proof.serialize_blocking_into(writer)
+            }
+            Self::NewBlockTemplate(block_template) => block_template.serialize_blocking_into(writer),
+            Self::PoolBlock(nonce, proof) => {
                 bincode::serialize_into(&mut *writer, nonce)?;
                 proof.serialize_blocking_into(writer)
             }
@@ -299,6 +310,8 @@ impl<N: Network, E: Environment> Message<N, E> {
                 bincode::deserialize_from(&mut *reader)?,
                 Data::Buffer(read_to_end(&mut *reader)?),
             ),
+            100 => Self::NewBlockTemplate(Data::Buffer(read_to_end(&mut *reader)?)),
+            101 => Self::PoolBlock(bincode::deserialize_from(&mut *reader)?, Data::Buffer(read_to_end(&mut *reader)?)),
             _ => return Err(anyhow!("Invalid message ID {}", id)),
         };
 

@@ -222,7 +222,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
                             return Err(anyhow!("Already connected to a peer with nonce {}", peer_nonce));
                         }
                         // Verify the listener port.
-                        if E::NODE_TYPE != NodeType::Operator && peer_ip.port() != listener_port {
+                        if node_type != NodeType::Prover && node_type != NodeType::PoolServer && peer_ip.port() != listener_port {
                             // Update the peer IP to the listener port.
                             peer_ip.set_port(listener_port);
                             // Ensure the claimed listener port is open.
@@ -496,7 +496,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                         }
                                     }
                                 }
-                                Message::ChallengeRequest(..) | Message::ChallengeResponse(..) => {
+                                Message::ChallengeRequest(..) | Message::ChallengeResponse(..) | Message::NewBlockTemplate(..) => {
                                     // Peer is not following the protocol.
                                     warn!("Peer {} is not following the protocol", peer_ip);
                                     break;
@@ -561,16 +561,6 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                     // Update the status of the peer.
                                     peer.status.update(status);
 
-                                    if peer.node_type == NodeType::Prover {
-                                        if let Err(error) = peers_router.send(PeersRequest::PeerIsProver(peer_ip)).await {
-                                            warn!("[PeerIsProver] {}", error);
-                                        }
-                                    } else if peer.node_type == NodeType::Operator {
-                                        if let Err(error) = prover_router.send(ProverRequest::OperatorConnected(peer_ip)).await {
-                                            warn!("[OperatorConnected] {}", error);
-                                        }
-                                    }
-
                                     // Determine if the peer is on a fork (or unknown).
                                     let is_fork = match ledger_reader.get_block_hash(peer.block_header.height()) {
                                         Ok(expected_block_hash) => Some(expected_block_hash != block_hash),
@@ -579,6 +569,20 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                     // Send a `Pong` message to the peer.
                                     if let Err(error) = peer.send(Message::Pong(is_fork, Data::Object(ledger_reader.latest_block_locators()))).await {
                                         warn!("[Pong] {}", error);
+                                    }
+
+                                    if peer.node_type == NodeType::Prover {
+                                        if let Err(error) = peers_router.send(PeersRequest::PeerIsProver(peer_ip)).await {
+                                            warn!("[PeerIsProver] {}", error);
+                                        }
+                                    } else if peer.node_type == NodeType::PoolServer {
+                                        if let Err(error) = peers_router.send(PeersRequest::PeerIsPoolServer(peer_ip)).await {
+                                            warn!("[PeerIsPoolServer] {}", error);
+                                        }
+                                    } else if peer.node_type == NodeType::Operator {
+                                        if let Err(error) = prover_router.send(ProverRequest::OperatorConnected(peer_ip)).await {
+                                            warn!("[OperatorConnected] {}", error);
+                                        }
                                     }
                                 },
                                 Message::Pong(is_fork, block_locators) => {
@@ -734,6 +738,17 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                         }
                                     } else {
                                         warn!("[PoolResponse] could not deserialize proof");
+                                    }
+                                }
+                                Message::PoolBlock(nonce, proof) => {
+                                    if E::NODE_TYPE != NodeType::Operator {
+                                        trace!("Skipping 'PoolBlock' from {}", peer_ip);
+                                    } else if let Ok(proof) = proof.deserialize().await {
+                                        if let Err(error) = operator_router.send(OperatorRequest::PoolBlock(nonce, proof)).await {
+                                            warn!("[PoolBlock] {}", error);
+                                        }
+                                    } else {
+                                        warn!("[PoolBlock] could not deserialize proof");
                                     }
                                 }
                                 Message::Unused(_) => break, // Peer is not following the protocol.
