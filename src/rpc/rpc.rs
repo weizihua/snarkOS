@@ -57,7 +57,7 @@ pub struct Meta {
 
 impl Metadata for Meta {}
 
-const METHODS_EXPECTING_PARAMS: [&str; 14] = [
+const METHODS_EXPECTING_PARAMS: [&str; 16] = [
     // public
     "getblock",
     "getblocks",
@@ -78,6 +78,8 @@ const METHODS_EXPECTING_PARAMS: [&str; 14] = [
     // "disconnect",
     "connect",
     "getshareforprover",
+    "getminedblock",
+    "getblockheaderroot",
 ];
 
 /// Starts a local RPC HTTP server at `rpc_port` in a dedicated `tokio` task.
@@ -393,6 +395,26 @@ async fn handle_rpc<N: Network, E: Environment>(
             let result = rpc.get_provers().await.map_err(convert_crate_err);
             result_to_response(&req, result)
         }
+        "getminedblock" => match (serde_json::from_value::<u32>(params.remove(0)), params.remove(0)) {
+            (Ok(height), block_hash) => {
+                let result = rpc.get_mined_block_info(height, block_hash).await.map_err(convert_crate_err);
+                result_to_response(&req, result)
+            }
+            _ => {
+                let err = jrt::Error::with_custom_msg(jrt::ErrorCode::ParseError, "Invalid block height");
+                jrt::Response::error(jrt::Version::V2, err, req.id.clone())
+            }
+        },
+        "getblockheaderroot" => match serde_json::from_value::<u32>(params.remove(0)) {
+            Ok(height) => {
+                let result = rpc.get_block_header_root(height).await.map_err(convert_crate_err);
+                result_to_response(&req, result)
+            }
+            _ => {
+                let err = jrt::Error::with_custom_msg(jrt::ErrorCode::ParseError, "Invalid block height");
+                jrt::Response::error(jrt::Version::V2, err, req.id.clone())
+            }
+        },
         _ => {
             let err = jrt::Error::from_code(jrt::ErrorCode::MethodNotFound);
             jrt::Response::error(jrt::Version::V2, err, req.id.clone())

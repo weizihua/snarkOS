@@ -401,6 +401,22 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcImpl<N, E> {
         Ok(serde_json::json!(provers))
     }
 
+    async fn get_mined_block_info(&self, height: u32, block_hash: Value) -> Result<Value, RpcError> {
+        let block_hash: N::BlockHash = serde_json::from_value(block_hash)?;
+        let block = self.ledger.get_block(height)?;
+        let canonical = block.hash() == block_hash;
+        let value = block.to_coinbase_transaction()?.value_balance();
+        Ok(serde_json::json!({
+            "canonical": canonical,
+            "value": -value.0,
+        }))
+    }
+
+    async fn get_block_header_root(&self, block_height: u32) -> Result<N::BlockHeaderRoot, RpcError> {
+        let block_header_root = self.ledger.get_block(block_height)?.header().to_header_root()?;
+        Ok(block_header_root)
+    }
+
     // /// Returns the current mempool and sync information known by this node.
     // async fn get_block_template(&self) -> Result<BlockTemplate, RpcError> {
     //     let canon = self.storage.canon().await?;

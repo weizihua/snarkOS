@@ -17,10 +17,20 @@
 use crate::{
     helpers::{NodeType, State, Status},
     network::{
-        ConnectionResult, LedgerReader, LedgerRequest, LedgerRouter, Message, OperatorRequest, OperatorRouter, PeersRequest, PeersRouter,
-        ProverRequest, ProverRouter,
+        ConnectionResult,
+        LedgerReader,
+        LedgerRequest,
+        LedgerRouter,
+        Message,
+        OperatorRequest,
+        OperatorRouter,
+        PeersRequest,
+        PeersRouter,
+        ProverRequest,
+        ProverRouter,
     },
-    Data, Environment,
+    Data,
+    Environment,
 };
 use snarkvm::dpc::prelude::*;
 
