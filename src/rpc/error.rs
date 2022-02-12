@@ -14,19 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
-// Re-export the metrics macros.
-pub use metrics::*;
+#[derive(Debug, Error)]
+pub enum RpcError {
+    #[error("{}", _0)]
+    AnyhowError(#[from] anyhow::Error),
+    #[error("{}: {}", _0, _1)]
+    Crate(&'static str, String),
+    #[error("{}", _0)]
+    FromHexError(#[from] hex::FromHexError),
+    #[error("{}", _0)]
+    Message(String),
+    #[error("{}", _0)]
+    ParseIntError(#[from] std::num::ParseIntError),
+    #[error("{}", _0)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("{}", _0)]
+    StdIOError(#[from] std::io::Error),
+}
 
-use metrics_exporter_prometheus::PrometheusBuilder;
-
-pub fn initialize() -> Option<tokio::task::JoinHandle<()>> {
-    let (recorder, exporter) = PrometheusBuilder::new().build().expect("can't build the prometheus exporter");
-
-    metrics::set_boxed_recorder(Box::new(recorder)).expect("can't set the prometheus exporter");
-
-    let metrics_exporter_task = tokio::task::spawn(async move {
-        exporter.await.expect("can't await the prometheus exporter");
-    });
-
-    Some(metrics_exporter_task)
+impl From<RpcError> for std::io::Error {
+    fn from(error: RpcError) -> Self {
+        std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", error))
+    }
 }

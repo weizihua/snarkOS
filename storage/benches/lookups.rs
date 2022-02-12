@@ -28,9 +28,9 @@ const NUM_BLOCKS: usize = 1_000;
 fn lookups(c: &mut Criterion) {
     // Prepare the test ledger.
     let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-    let ledger = LedgerState::open_writer::<RocksDB, _>(temp_dir).expect("Failed to initialize ledger");
+    let ledger = LedgerState::open_writer_with_increment::<RocksDB, _>(temp_dir, 1).expect("Failed to initialize ledger");
 
-    // Read the test blocks.
+    // Read the test blocks; note: they don't include the genesis block, as it's always available when creating a ledger.
     // note: the `blocks_100` and `blocks_1000` files were generated on a testnet2 storage using `LedgerState::dump_blocks`.
     let test_blocks = fs::read(format!("benches/blocks_{}", NUM_BLOCKS)).unwrap_or_else(|_| panic!("Missing the test blocks file"));
     let blocks: Vec<Block<Testnet2>> = bincode::deserialize(&test_blocks).expect("Failed to deserialize a block dump");
@@ -40,6 +40,8 @@ fn lookups(c: &mut Criterion) {
 
     let mut block_hashes = Vec::with_capacity(NUM_BLOCKS);
     block_hashes.push(Testnet2::genesis_block().hash());
+
+    let mut ledger_roots = Vec::with_capacity(NUM_BLOCKS);
 
     let mut tx_ids = Vec::with_capacity(NUM_BLOCKS);
     for tx_id in Testnet2::genesis_block().transactions().transaction_ids() {
@@ -60,12 +62,23 @@ fn lookups(c: &mut Criterion) {
     for block in &blocks {
         ledger.add_next_block(block).expect("Failed to add a test block");
         block_hashes.push(block.hash());
+        ledger_roots.push(ledger.latest_ledger_root());
+        tx_ids.extend(block.transactions().transaction_ids());
+        tx_commitments.extend(block.commitments());
+        tx_serial_numbers.extend(block.serial_numbers());
     }
     assert_eq!(block_hashes.len(), NUM_BLOCKS);
 
     // Seed a fast random number generator.
     let seed: u64 = thread_rng().gen();
     let mut rng = XorShiftRng::seed_from_u64(seed);
+
+    c.bench_function("ledger_roots_lookup", |b| {
+        b.iter(|| {
+            let root = ledger_roots.choose(&mut rng).unwrap();
+            ledger.contains_ledger_root(root).expect("Lookup by ledger root failed");
+        })
+    });
 
     c.bench_function("blocks_lookup_by_height", |b| {
         b.iter(|| {

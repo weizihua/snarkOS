@@ -18,6 +18,7 @@ use crate::{
     helpers::{NodeType, State, Status},
     network::{
         ConnectionResult,
+        DisconnectReason,
         LedgerReader,
         LedgerRequest,
         LedgerRouter,
@@ -34,14 +35,16 @@ use crate::{
 };
 use snarkvm::dpc::prelude::*;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use futures::SinkExt;
 use std::{
     collections::HashMap,
     net::SocketAddr,
     time::{Duration, Instant, SystemTime},
 };
-use tokio::{net::TcpStream, sync::mpsc, task, time::timeout};
+#[cfg(not(feature = "test"))]
+use tokio::time::timeout;
+use tokio::{net::TcpStream, sync::mpsc, task};
 use tokio_stream::StreamExt;
 use tokio_util::codec::Framed;
 
@@ -197,10 +200,19 @@ impl<N: Network, E: Environment> Peer<N, E> {
                         // Ensure the message protocol version is not outdated.
                         if version < E::MESSAGE_VERSION {
                             warn!("Dropping {} on version {} (outdated)", peer_ip, version);
+
+                            // Send the disconnect message.
+                            let message = Message::Disconnect(DisconnectReason::OutdatedClientVersion);
+                            outbound_socket.send(message).await?;
+
                             return Err(anyhow!("Dropping {} on version {} (outdated)", peer_ip, version));
                         }
                         // Ensure the maximum fork depth is correct.
                         if fork_depth != N::ALEO_MAXIMUM_FORK_DEPTH {
+                            // Send the disconnect message.
+                            let message = Message::Disconnect(DisconnectReason::InvalidForkDepth);
+                            outbound_socket.send(message).await?;
+
                             return Err(anyhow!(
                                 "Dropping {} for an incorrect maximum fork depth of {}",
                                 peer_ip,
@@ -213,6 +225,10 @@ impl<N: Network, E: Environment> Peer<N, E> {
                             && node_type == NodeType::Sync
                             && local_cumulative_weight > peer_cumulative_weight
                         {
+                            // Send the disconnect message.
+                            let message = Message::Disconnect(DisconnectReason::YouNeedToSyncFirst);
+                            outbound_socket.send(message).await?;
+
                             return Err(anyhow!("Dropping {} as this node is ahead", peer_ip));
                         }
                         // If this node is a sync node, the peer is not a sync node and is syncing, and the peer is ahead, proceed to disconnect.
@@ -221,6 +237,10 @@ impl<N: Network, E: Environment> Peer<N, E> {
                             && peer_status == State::Syncing
                             && peer_cumulative_weight > local_cumulative_weight
                         {
+                            // Send the disconnect message.
+                            let message = Message::Disconnect(DisconnectReason::INeedToSyncFirst);
+                            outbound_socket.send(message).await?;
+
                             return Err(anyhow!("Dropping {} as this node is ahead", peer_ip));
                         }
                         // Ensure the peer is not this node.
@@ -235,15 +255,23 @@ impl<N: Network, E: Environment> Peer<N, E> {
                         if node_type != NodeType::Prover && node_type != NodeType::PoolServer && peer_ip.port() != listener_port {
                             // Update the peer IP to the listener port.
                             peer_ip.set_port(listener_port);
-                            // Ensure the claimed listener port is open.
-                            let stream =
-                                match timeout(Duration::from_millis(E::CONNECTION_TIMEOUT_IN_MILLIS), TcpStream::connect(peer_ip)).await {
+
+                            // This check needs to be excluded from network integration tests.
+                            #[cfg(not(feature = "test"))]
+                            {
+                                // Ensure the claimed listener port is open.
+                                let _ = match timeout(Duration::from_millis(E::CONNECTION_TIMEOUT_IN_MILLIS), TcpStream::connect(peer_ip))
+                                    .await
+                                {
                                     Ok(stream) => stream,
-                                    Err(error) => return Err(anyhow!("Unable to reach '{}': '{:?}'", peer_ip, error)),
+                                    Err(error) => {
+                                        // Send the disconnect message.
+                                        let message = Message::Disconnect(DisconnectReason::YourPortIsClosed(listener_port));
+                                        outbound_socket.send(message).await?;
+
+                                        return Err(anyhow!("Unable to reach '{}': '{:?}'", peer_ip, error));
+                                    }
                                 };
-                            // Error if the stream is not open.
-                            if let Err(error) = stream {
-                                return Err(anyhow!("Unable to reach '{}': '{}'", peer_ip, error));
                             }
                         }
                         // Send the challenge response.
@@ -256,6 +284,9 @@ impl<N: Network, E: Environment> Peer<N, E> {
                         status.update(peer_status);
 
                         (peer_nonce, node_type, status)
+                    }
+                    Message::Disconnect(reason) => {
+                        bail!("Peer {} disconnected for the following reason: {:?}", peer_ip, reason);
                     }
                     message => {
                         return Err(anyhow!(
@@ -273,30 +304,33 @@ impl<N: Network, E: Environment> Peer<N, E> {
         };
 
         // Wait for the challenge response to come in.
-        loop {
-            match outbound_socket.next().await {
-                Some(Ok(message)) => {
-                    // Process the message.
-                    trace!("Received '{}-A' from {}", message.name(), peer_ip);
-                    match message {
-                        Message::ChallengeResponse(block_header) => {
-                            // Perform the deferred non-blocking deserialization of the block header.
-                            let block_header = block_header.deserialize().await?;
-                            match &block_header == genesis_header {
-                                true => return Ok((peer_ip, peer_nonce, node_type, status)),
-                                false => return Err(anyhow!("Challenge response from {} failed, received '{}'", peer_ip, block_header)),
-                            }
-                        }
-                        message => {
-                            warn!("Expected challenge response, received '{}' from {}", message.name(), peer_ip);
+        match outbound_socket.next().await {
+            Some(Ok(message)) => {
+                // Process the message.
+                trace!("Received '{}-A' from {}", message.name(), peer_ip);
+                match message {
+                    Message::ChallengeResponse(block_header) => {
+                        // Perform the deferred non-blocking deserialization of the block header.
+                        let block_header = block_header.deserialize().await?;
+                        match &block_header == genesis_header {
+                            true => Ok((peer_ip, peer_nonce, node_type, status)),
+                            false => Err(anyhow!("Challenge response from {} failed, received '{}'", peer_ip, block_header)),
                         }
                     }
+                    Message::Disconnect(reason) => {
+                        bail!("Peer {} disconnected for the following reason: {:?}", peer_ip, reason);
+                    }
+                    message => Err(anyhow!(
+                        "Expected challenge response, received '{}' from {}",
+                        message.name(),
+                        peer_ip
+                    )),
                 }
-                // An error occurred.
-                Some(Err(error)) => return Err(anyhow!("Failed to get challenge response from {}: {:?}", peer_ip, error)),
-                // Did not receive anything.
-                None => return Err(anyhow!("Failed to get challenge response from {}, peer has disconnected", peer_ip)),
             }
+            // An error occurred.
+            Some(Err(error)) => Err(anyhow!("Failed to get challenge response from {}: {:?}", peer_ip, error)),
+            // Did not receive anything.
+            None => Err(anyhow!("Failed to get challenge response from {}, peer has disconnected", peer_ip)),
         }
     }
 
@@ -511,7 +545,10 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                     warn!("Peer {} is not following the protocol", peer_ip);
                                     break;
                                 },
-                                Message::Disconnect => break,
+                                Message::Disconnect(reason) => {
+                                    debug!("Peer {} disconnected for the following reason: {:?}", peer_ip, reason);
+                                    break;
+                                },
                                 Message::PeerRequest => {
                                     // Send a `PeerResponse` message.
                                     if let Err(error) = peers_router.send(PeersRequest::SendPeerResponse(peer_ip)).await {
@@ -775,7 +812,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
             // When this is reached, it means the peer has disconnected.
             // Route a `Disconnect` to the ledger.
             if let Err(error) = ledger_router
-                .send(LedgerRequest::Disconnect(peer_ip, "peer has disconnected".to_string()))
+                .send(LedgerRequest::Disconnect(peer_ip, DisconnectReason::PeerHasDisconnected))
                 .await
             {
                 warn!("[Peer::Disconnect] {}", error);

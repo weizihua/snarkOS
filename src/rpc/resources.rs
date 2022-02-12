@@ -14,19 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
-// Re-export the metrics macros.
-pub use metrics::*;
+// The details on resource-limiting can be found at https://github.com/paritytech/jsonrpsee/blob/master/core/src/server/resource_limiting.rs
 
-use metrics_exporter_prometheus::PrometheusBuilder;
+// note: jsonrpsee expects string literals as resource names; we'll be distinguishing
+// them by the const name, so in order for the actual lookups to be faster, we can make
+// the underlying strings short, as long as they are unique.
 
-pub fn initialize() -> Option<tokio::task::JoinHandle<()>> {
-    let (recorder, exporter) = PrometheusBuilder::new().build().expect("can't build the prometheus exporter");
-
-    metrics::set_boxed_recorder(Box::new(recorder)).expect("can't set the prometheus exporter");
-
-    let metrics_exporter_task = tokio::task::spawn(async move {
-        exporter.await.expect("can't await the prometheus exporter");
-    });
-
-    Some(metrics_exporter_task)
-}
+/// The resource label corresponding to the number of all active RPC calls.
+pub(crate) const ALL_CONCURRENT_REQUESTS: &str = "0";
+/// The maximum number of RPC requests that can be handled at once at any given time.
+pub(crate) const ALL_CONCURRENT_REQUESTS_LIMIT: u16 = 10;

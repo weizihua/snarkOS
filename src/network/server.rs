@@ -22,19 +22,19 @@ use crate::{
     operator::{Operator, OperatorRouter},
     peers::{Peers, PeersRequest, PeersRouter},
     prover::{Prover, ProverRouter},
-    rpc::initialize_rpc_server,
     Node,
 };
 use snarkos_storage::{storage::rocksdb::RocksDB, LedgerState};
 use snarkvm::prelude::*;
 
+#[cfg(feature = "rpc")]
+use crate::rpc::{context::RpcContext, initialize_rpc_server};
+#[cfg(feature = "rpc")]
+use tokio::sync::RwLock;
+
 use anyhow::Result;
 use std::{net::SocketAddr, sync::Arc, time::Duration};
-use tokio::{
-    net::TcpListener,
-    sync::{oneshot, RwLock},
-    task,
-};
+use tokio::{net::TcpListener, sync::oneshot, task};
 
 pub type LedgerReader<N> = Arc<LedgerState<N>>;
 
@@ -154,13 +154,16 @@ impl<N: Network, E: Environment> Server<N, E> {
             prover.router(),
         )
         .await;
+
         // Initialize a new instance of the heartbeat.
         Self::initialize_heartbeat(peers.router(), ledger.reader(), ledger.router(), operator.router(), prover.router()).await;
+
+        #[cfg(feature = "rpc")]
         // Initialize a new instance of the RPC server.
         Self::initialize_rpc(
             node,
             address,
-            &peers,
+            peers.clone(),
             ledger.reader(),
             ledger.router(),
             operator.clone(),
@@ -169,6 +172,7 @@ impl<N: Network, E: Environment> Server<N, E> {
             prover.memory_pool(),
         )
         .await;
+
         // Initialize a new instance of the notification.
         Self::initialize_notification(ledger.reader(), prover.clone(), address).await;
 
@@ -340,10 +344,11 @@ impl<N: Network, E: Environment> Server<N, E> {
     /// Initialize a new instance of the RPC server.
     ///
     #[inline]
+    #[cfg(feature = "rpc")]
     async fn initialize_rpc(
         node: &Node,
         address: Option<Address<N>>,
-        peers: &Arc<Peers<N, E>>,
+        peers: Arc<Peers<N, E>>,
         ledger_reader: LedgerReader<N>,
         ledger_router: LedgerRouter<N>,
         operator: Arc<Operator<N, E>>,
@@ -353,22 +358,23 @@ impl<N: Network, E: Environment> Server<N, E> {
     ) {
         if !node.norpc {
             // Initialize a new instance of the RPC server.
-            E::tasks().append(
-                initialize_rpc_server::<N, E>(
-                    node.rpc,
-                    node.rpc_username.clone(),
-                    node.rpc_password.clone(),
-                    address,
-                    peers,
-                    ledger_reader,
-                    ledger_router,
-                    operator,
-                    operator_router,
-                    prover_router,
-                    memory_pool,
-                )
-                .await,
+            let rpc_context = RpcContext::new(
+                node.rpc_username.clone(),
+                node.rpc_password.clone(),
+                address,
+                peers,
+                ledger_reader,
+                ledger_router,
+                operator,
+                operator_router,
+                prover_router,
+                memory_pool,
             );
+            let (rpc_server_addr, rpc_server_handle) = initialize_rpc_server::<N, E>(node.rpc, rpc_context).await;
+
+            debug!("JSON-RPC server listening on {}", rpc_server_addr);
+
+            E::tasks().append(rpc_server_handle);
         }
     }
 
