@@ -348,14 +348,13 @@ impl<N: Network, E: Environment> Peers<N, E> {
                             return if E::sync_nodes().contains(peer_ip) || E::beacon_nodes().contains(peer_ip) {
                                 false
                             } else {
-                                match self.prover_peers.try_read() {
+                                (match self.prover_peers.try_read() {
                                     Ok(peers) => !peers.contains(peer_ip),
                                     Err(_) => false,
-                                }
-                                || match self.poolserver_peers.try_read() {
+                                }) || (match self.poolserver_peers.try_read() {
                                     Ok(peers) => !peers.contains(peer_ip),
                                     Err(_) => false,
-                                }
+                                })
                             };
                         })
                         .take(num_excess_peers)
