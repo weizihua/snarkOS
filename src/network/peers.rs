@@ -261,6 +261,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
                     .number_of_connected_peers()
                     .await
                     .saturating_sub(self.prover_peers.read().await.len())
+                    .saturating_sub(self.poolserver_peers.read().await.len())
                     >= E::MAXIMUM_NUMBER_OF_PEERS
                 {
                     debug!("Skipping connection request to {} (maximum peers reached)", peer_ip);
@@ -326,12 +327,17 @@ impl<N: Network, E: Environment> Peers<N, E> {
                 // Obtain the number of connected peers.
                 let number_of_connected_peers = self.number_of_connected_peers().await;
                 // Ensure the number of connected peers is below the maximum threshold.
-                if number_of_connected_peers.saturating_sub(self.prover_peers.read().await.len()) > E::MAXIMUM_NUMBER_OF_PEERS {
+                if number_of_connected_peers
+                    .saturating_sub(self.prover_peers.read().await.len())
+                    .saturating_sub(self.poolserver_peers.read().await.len())
+                    > E::MAXIMUM_NUMBER_OF_PEERS
+                {
                     debug!("Exceeded maximum number of connected peers");
 
                     // Determine the peers to disconnect from.
                     let num_excess_peers = number_of_connected_peers
                         .saturating_sub(self.prover_peers.read().await.len())
+                        .saturating_sub(self.poolserver_peers.read().await.len())
                         .saturating_sub(E::MAXIMUM_NUMBER_OF_PEERS);
                     let peer_ips_to_disconnect = self
                         .connected_peers
@@ -343,6 +349,10 @@ impl<N: Network, E: Environment> Peers<N, E> {
                                 false
                             } else {
                                 match self.prover_peers.try_read() {
+                                    Ok(peers) => !peers.contains(peer_ip),
+                                    Err(_) => false,
+                                }
+                                || match self.poolserver_peers.try_read() {
                                     Ok(peers) => !peers.contains(peer_ip),
                                     Err(_) => false,
                                 }
