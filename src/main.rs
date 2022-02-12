@@ -33,11 +33,7 @@ fn main() -> Result<()> {
         initialize_logger(node.verbosity, None);
     }
 
-    let (num_tokio_worker_threads, max_tokio_blocking_threads) = if !node.sync {
-        ((num_cpus::get() / 8 * 2).max(1), num_cpus::get())
-    } else {
-        (num_cpus::get(), 512) // 512 is tokio's current default
-    };
+    let (num_tokio_worker_threads, max_tokio_blocking_threads) = (num_cpus::get(), 512); // 512 is tokio's current default
 
     // Initialize the runtime configuration.
     let runtime = runtime::Builder::new_multi_thread()
@@ -47,11 +43,7 @@ fn main() -> Result<()> {
         .max_blocking_threads(max_tokio_blocking_threads)
         .build()?;
 
-    let num_rayon_cores_global = if !node.sync {
-        (num_cpus::get() / 8 * 5).max(1)
-    } else {
-        num_cpus::get()
-    };
+    let num_rayon_cores_global = num_cpus::get();
 
     // Initialize the parallelization parameters.
     rayon::ThreadPoolBuilder::new()
