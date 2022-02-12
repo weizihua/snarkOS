@@ -157,8 +157,10 @@ version = "3.2"
 
 [profile.release]
 opt-level = 3
+debug = 1
 lto = "thin"
 incremental = true
+codegen-units = 256
 
 [profile.bench]
 opt-level = 3
