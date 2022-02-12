@@ -256,15 +256,14 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcContext<N, E> {
         Ok(transaction.transaction_id())
     }
 
-    async fn connect(&self, peers: Vec<serde_json::Value>) -> Result<bool, RpcError> {
+    async fn connect(&self, peers: Vec<String>) -> Result<bool, RpcError> {
         for peer_ip in &peers {
-            let peer_ip = peer_ip.to_string();
             let (router, _handler) = oneshot::channel();
             let addr: Result<SocketAddr, std::net::AddrParseError> = peer_ip[1..peer_ip.len() - 1].parse();
             let res = match addr {
                 Ok(addr) => addr,
                 Err(error) => {
-                    panic!("{}", error.to_string());
+                    return Err(RpcError::Message(error.to_string()));
                 }
             };
             if let Err(error) = self

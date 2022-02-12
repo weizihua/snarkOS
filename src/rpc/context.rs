@@ -295,8 +295,13 @@ fn create_rpc_module<N: Network, E: Environment>(rpc_context: RpcContext<N, E>) 
     //     result_to_response(&req, result)
     // }
 
-    module.register_async_method("getsharesforprover", |rpc_params, rpc_context| async move {
-        let prover = rpc_params.parse::<[Address<N>; 1]>()?[0];
+    module.register_async_method("connect", |_rpc_params, rpc_context| async move {
+        let addresses = _rpc_params.parse::<Vec<String>>()?;
+        rpc_context.connect(addresses).map_err(JsonrpseeError::to_call_error).await
+    })?;
+
+    module.register_async_method("getsharesforprover", |_rpc_params, rpc_context| async move {
+        let prover = _rpc_params.parse::<[Address<N>; 1]>()?[0];
         rpc_context
             .get_shares_for_prover(prover)
             .map_err(JsonrpseeError::to_call_error)
