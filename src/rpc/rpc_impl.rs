@@ -259,7 +259,7 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcContext<N, E> {
     async fn connect(&self, peers: Vec<String>) -> Result<bool, RpcError> {
         for peer_ip in &peers {
             let (router, _handler) = oneshot::channel();
-            let addr: Result<SocketAddr, std::net::AddrParseError> = peer_ip[1..peer_ip.len() - 1].parse();
+            let addr: Result<SocketAddr, std::net::AddrParseError> = peer_ip.parse();
             let res = match addr {
                 Ok(addr) => addr,
                 Err(error) => {
