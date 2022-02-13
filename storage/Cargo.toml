@@ -1,6 +1,6 @@
 [package]
 name = "snarkos-storage"
-version = "2.0.1"
+version = "2.0.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Storage for a decentralized operating system"
 homepage = "https://aleo.org"
@@ -54,7 +54,7 @@ version = "0.8"
 version = "1"
 
 [dependencies.rocksdb]
-version = "0.17"
+version = "0.18"
 optional = true
 default-features = false
 features = [ "snappy" ]

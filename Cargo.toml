@@ -1,6 +1,6 @@
 [package]
 name = "snarkos"
-version = "2.0.1"
+version = "2.0.2"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized operating system"
 homepage = "https://aleo.org"
@@ -22,23 +22,23 @@ members = [ "metrics", "storage", "testing" ]
 [features]
 default = [ "rpc" ]
 cuda = [ "snarkvm/cuda" ]
-prometheus = ["snarkos-metrics"]
+prometheus = [ "snarkos-metrics" ]
 rpc = [ "jsonrpsee" ]
-test = []
+test = [ ]
 
 [dependencies]
 bytes = "1.0.0"
-crossterm = "0.22"
+crossterm = "0.23"
 tui = "0.17.0"
 
   [dependencies.snarkos-metrics]
   path = "./metrics"
-  version = "2.0.1"
+  version = "2.0.2"
   optional = true
 
   [dependencies.snarkos-storage]
   path = "./storage"
-  version = "2.0.1"
+  version = "2.0.2"
 
   [dependencies.snarkvm]
   version = "0.8.0"
@@ -65,14 +65,14 @@ tui = "0.17.0"
   version = "2.0"
 
   [dependencies.futures]
-  version = "0.3.19"
+  version = "0.3.21"
   features = [ "thread-pool" ]
 
   [dependencies.hex]
   version = "0.4"
 
   [dependencies.jsonrpsee]
-  version = "0.8"
+  version = "0.9"
   optional = true
   features = [ "http-server" ]
 
@@ -129,7 +129,7 @@ tui = "0.17.0"
 ]
 
   [dependencies.tokio-util]
-  version = "=0.6"
+  version = "0.7"
   features = [ "codec" ]
 
   [dependencies.tokio-stream]
@@ -143,7 +143,7 @@ tui = "0.17.0"
   features = [ "env-filter", "parking_lot" ]
 
 [dev-dependencies.jsonrpsee]
-version = "0.8"
+version = "0.9"
 features = [ "http-client" ]
 
 [dev-dependencies.rand_chacha]
