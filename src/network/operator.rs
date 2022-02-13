@@ -15,7 +15,16 @@
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    helpers::NodeType, Data, Environment, LedgerReader, LedgerRequest, LedgerRouter, Message, PeersRequest, PeersRouter, ProverRouter,
+    helpers::NodeType,
+    Data,
+    Environment,
+    LedgerReader,
+    LedgerRequest,
+    LedgerRouter,
+    Message,
+    PeersRequest,
+    PeersRouter,
+    ProverRouter,
 };
 use snarkos_storage::{storage::Storage, OperatorState};
 use snarkvm::dpc::{prelude::*, PoSWProof};
@@ -56,7 +65,7 @@ pub enum OperatorRequest<N: Network> {
 /// The predefined base share difficulty.
 const BASE_SHARE_DIFFICULTY: u64 = u64::MAX / 5;
 /// The operator heartbeat in seconds.
-const HEARTBEAT_IN_SECONDS: Duration = Duration::from_secs(1);
+const HEARTBEAT_IN_SECONDS: Duration = Duration::from_millis(100);
 
 ///
 /// An operator for a program on a specific network in the node server.
