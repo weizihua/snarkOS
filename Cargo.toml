@@ -26,7 +26,7 @@ prometheus = [ "snarkos-metrics" ]
 test = [ ]
 
 [dependencies]
-snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "cefc1811" }
+snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "cfb283e3" }
 
 bytes = "1.0.0"
 crossterm = "0.22"

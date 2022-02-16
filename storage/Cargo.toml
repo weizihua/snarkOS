@@ -17,7 +17,7 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
-snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "cefc1811" }
+snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "cfb283e3" }
 
 [[bench]]
 name = "lookups"
