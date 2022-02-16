@@ -14,18 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkOS library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkos_testing::ClientNode;
+// Re-export the metrics macros.
+pub use metrics::*;
 
-use std::time::Instant;
+use metrics_exporter_prometheus::PrometheusBuilder;
 
-#[tokio::test]
-#[ignore = "this test is purely informational; latest result: ~675ms"]
-async fn measure_node_startup() {
-    let now = Instant::now();
+pub fn initialize() -> Option<tokio::task::JoinHandle<()>> {
+    let (recorder, exporter) = PrometheusBuilder::new().build().expect("can't build the prometheus exporter");
 
-    // Start a snarkOS node.
-    let _snarkos_node = ClientNode::default().await;
+    metrics::set_boxed_recorder(Box::new(recorder)).expect("can't set the prometheus exporter");
 
-    // Display the result.
-    println!("snarkOS start-up time: {}ms", now.elapsed().as_millis());
+    let metrics_exporter_task = tokio::task::spawn(async move {
+        exporter.await.expect("can't await the prometheus exporter");
+    });
+
+    Some(metrics_exporter_task)
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -37,6 +37,7 @@ use std::{
     thread,
     thread::JoinHandle,
 };
+use time::OffsetDateTime;
 
 /// The maximum number of linear block locators.
 pub const MAXIMUM_LINEAR_BLOCK_LOCATORS: u32 = 64;
@@ -599,7 +600,10 @@ impl<N: Network> LedgerState<N> {
         let previous_block_hash = latest_block.hash();
         let block_height = latest_block.height().saturating_add(1);
         // Ensure that the new timestamp is ahead of the previous timestamp.
-        let block_timestamp = std::cmp::max(chrono::Utc::now().timestamp(), latest_block.timestamp().saturating_add(1));
+        let block_timestamp = std::cmp::max(
+            OffsetDateTime::now_utc().unix_timestamp(),
+            latest_block.timestamp().saturating_add(1),
+        );
 
         // Compute the block difficulty target.
         let difficulty_target = if N::NETWORK_ID == 2 && block_height <= snarkvm::dpc::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
@@ -733,7 +737,7 @@ impl<N: Network> LedgerState<N> {
         }
 
         // Ensure the next block timestamp is within the declared time limit.
-        let now = chrono::Utc::now().timestamp();
+        let now = OffsetDateTime::now_utc().unix_timestamp();
         if block.timestamp() > (now + N::ALEO_FUTURE_TIME_LIMIT_IN_SECS) {
             return Err(anyhow!("The given block timestamp exceeds the time limit"));
         }
@@ -1206,6 +1210,30 @@ impl<N: Network> LedgerState<N> {
     // rocksdb.
     pub fn shut_down(&self) -> Arc<RwLock<()>> {
         self.map_lock.clone()
+    }
+
+    ///
+    /// Dump the specified number of blocks to the given location.
+    ///
+    #[cfg(test)]
+    #[allow(dead_code)]
+    fn dump_blocks<P: AsRef<Path>>(&self, path: P, count: u32) -> Result<()> {
+        let mut file = std::fs::File::create(path)?;
+        let mut blocks = Vec::with_capacity(count as usize);
+
+        println!("Commencing block dump");
+        for i in 1..count {
+            if i % 10 == 0 {
+                println!("Dumping block {}/{}", i, count);
+            }
+            let block = self.get_block(i)?;
+            blocks.push(block);
+        }
+        println!("Block dump complete");
+
+        bincode::serialize_into(&mut file, &blocks)?;
+
+        Ok(())
     }
 }
 

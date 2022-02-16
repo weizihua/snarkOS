@@ -6,19 +6,30 @@ description = "Storage for a decentralized operating system"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkOS"
 keywords = [
-    "aleo",
-    "cryptography",
-    "blockchain",
-    "decentralized",
-    "zero-knowledge"
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
 ]
 categories = [ "cryptography", "operating-systems" ]
 license = "GPL-3.0"
 edition = "2018"
 
 [dependencies]
-snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "3ffd025b" }
-#snarkvm = { path = "../../snarkVM" }
+snarkvm = { git = "https://github.com/HarukaMa/snarkVM.git", rev = "cefc1811" }
+
+[[bench]]
+name = "lookups"
+harness = false
+
+[[bench]]
+name = "insertion"
+harness = false
+
+[[bench]]
+name = "opening"
+harness = false
 
 [dependencies.anyhow]
 version = "1"
@@ -27,11 +38,6 @@ version = "1"
 version = "1.0"
 optional = true
 
-[dependencies.chrono]
-version = "0.4"
-default-features = false
-features = [ "clock", "serde" ]
-
 [dependencies.circular-queue]
 version = "0.2"
 
@@ -39,7 +45,7 @@ version = "0.2"
 version = "0.10"
 
 [dependencies.parking_lot]
-version = "0.11"
+version = "0.12"
 
 [dependencies.rand]
 version = "0.8"
@@ -51,7 +57,7 @@ version = "1"
 version = "0.17"
 optional = true
 default-features = false
-features = ["snappy"]
+features = [ "snappy" ]
 
 [dependencies.serde]
 version = "1"
@@ -59,12 +65,21 @@ version = "1"
 [dependencies.serde_json]
 version = "1"
 
+[dependencies.time]
+version = "0.3.7"
+
 [dependencies.tracing]
 version = "0.1"
+
+[dev-dependencies.criterion]
+version = "0.3"
+
+[dev-dependencies.rand_xorshift]
+version = "0.3"
 
 [dev-dependencies.tempfile]
 version = "3.2"
 
 [features]
-default = ["rocks"]
-rocks = ["bincode", "rocksdb"]
+default = [ "rocks" ]
+rocks = [ "bincode", "rocksdb" ]

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -224,6 +224,13 @@ impl<N: Network, E: Environment> Operator<N, E> {
     /// Returns the shares for a specific prover, given a ledger and the prover address.
     pub fn get_shares_for_prover(&self, prover: &Address<N>) -> u64 {
         self.state.get_shares_for_prover(&self.ledger_reader, prover)
+    }
+
+    ///
+    /// Returns a list of all provers which have submitted shares to this operator.
+    ///
+    pub fn get_provers(&self) -> Vec<Address<N>> {
+        self.state.get_provers()
     }
 
     ///

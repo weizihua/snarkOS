@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 //! See [RpcFunctions](../trait.RpcFunctions.html) for documentation of public endpoints.
 
 use crate::{
+    network::Operator,
     rpc::{rpc::*, rpc_trait::RpcFunctions},
     Environment,
     LedgerReader,
@@ -35,6 +36,7 @@ use snarkvm::{
 use jsonrpc_core::Value;
 use snarkvm::{dpc::Record, utilities::ToBytes};
 use std::{cmp::max, net::SocketAddr, ops::Deref, sync::Arc, time::Instant};
+use time::OffsetDateTime;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Error)]
@@ -66,6 +68,7 @@ pub struct RpcInner<N: Network, E: Environment> {
     address: Option<Address<N>>,
     peers: Arc<Peers<N, E>>,
     ledger: LedgerReader<N>,
+    operator: Arc<Operator<N, E>>,
     prover_router: ProverRouter<N>,
     memory_pool: Arc<RwLock<MemoryPool<N>>>,
     /// RPC credentials for accessing guarded endpoints
@@ -93,6 +96,7 @@ impl<N: Network, E: Environment> RpcImpl<N, E> {
         address: Option<Address<N>>,
         peers: Arc<Peers<N, E>>,
         ledger: LedgerReader<N>,
+        operator: Arc<Operator<N, E>>,
         prover_router: ProverRouter<N>,
         memory_pool: Arc<RwLock<MemoryPool<N>>>,
     ) -> Self {
@@ -100,6 +104,7 @@ impl<N: Network, E: Environment> RpcImpl<N, E> {
             address,
             peers,
             ledger,
+            operator,
             prover_router,
             memory_pool,
             credentials,
@@ -187,7 +192,7 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcImpl<N, E> {
         // Prepare the new block.
         let previous_block_hash = latest_block.hash();
         let block_height = self.ledger.latest_block_height() + 1;
-        let block_timestamp = chrono::Utc::now().timestamp();
+        let block_timestamp = OffsetDateTime::now_utc().unix_timestamp();
 
         // Compute the block difficulty target.
         let difficulty_target = if N::NETWORK_ID == 2 && block_height <= snarkvm::dpc::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
@@ -336,5 +341,23 @@ impl<N: Network, E: Environment> RpcFunctions<N> for RpcImpl<N, E> {
             warn!("[UnconfirmedTransaction] {}", error);
         }
         Ok(transaction.transaction_id())
+    }
+
+    /// Returns the amount of shares submitted by a given prover.
+    async fn get_shares_for_prover(&self, prover: Value) -> Result<u64, RpcError> {
+        let prover: Address<N> = serde_json::from_value(prover)?;
+        Ok(self.operator.get_shares_for_prover(&prover))
+    }
+
+    /// Returns the amount of shares submitted to the operator in total.
+    async fn get_shares(&self) -> u64 {
+        let shares = self.operator.to_shares();
+        shares.iter().map(|(_, share)| share.values().sum::<u64>()).sum()
+    }
+
+    /// Returns a list of all provers that have submitted shares to the operator.
+    async fn get_provers(&self) -> Value {
+        let provers = self.operator.get_provers();
+        serde_json::json!(provers)
     }
 }

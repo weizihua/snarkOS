@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -157,9 +157,22 @@ impl<N: Network, E: Environment> Server<N, E> {
         // Initialize a new instance of the heartbeat.
         Self::initialize_heartbeat(peers.router(), ledger.reader(), ledger.router(), operator.router(), prover.router()).await;
         // Initialize a new instance of the RPC server.
-        Self::initialize_rpc(node, address, &peers, ledger.reader(), prover.router(), prover.memory_pool()).await;
+        Self::initialize_rpc(
+            node,
+            address,
+            &peers,
+            ledger.reader(),
+            operator.clone(),
+            prover.router(),
+            prover.memory_pool(),
+        )
+        .await;
         // Initialize a new instance of the notification.
         Self::initialize_notification(ledger.reader(), prover.clone(), address).await;
+
+        // Initialise the metrics exporter.
+        #[cfg(feature = "prometheus")]
+        Self::initialize_metrics();
 
         Ok(Self {
             local_ip,
@@ -330,6 +343,7 @@ impl<N: Network, E: Environment> Server<N, E> {
         address: Option<Address<N>>,
         peers: &Arc<Peers<N, E>>,
         ledger_reader: LedgerReader<N>,
+        operator: Arc<Operator<N, E>>,
         prover_router: ProverRouter<N>,
         memory_pool: Arc<RwLock<MemoryPool<N>>>,
     ) {
@@ -343,6 +357,7 @@ impl<N: Network, E: Environment> Server<N, E> {
                     address,
                     peers,
                     ledger_reader,
+                    operator,
                     prover_router,
                     memory_pool,
                 )
@@ -403,5 +418,10 @@ impl<N: Network, E: Environment> Server<N, E> {
         }));
         // Wait until the heartbeat task is ready.
         let _ = handler.await;
+    }
+
+    #[cfg(feature = "prometheus")]
+    fn initialize_metrics() {
+        E::tasks().append(snarkos_metrics::initialize().expect("couldn't initialise the metrics"));
     }
 }

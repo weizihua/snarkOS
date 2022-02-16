@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -92,6 +92,15 @@ pub trait RpcFunctions<N: Network> {
 
     #[doc = include_str!("./documentation/public_endpoints/sendtransaction.md")]
     async fn send_transaction(&self, transaction_bytes: String) -> Result<N::TransactionID, RpcError>;
+
+    #[doc = include_str!("./documentation/public_endpoints/getsharesforprover.md")]
+    async fn get_shares_for_prover(&self, prover: serde_json::Value) -> Result<u64, RpcError>;
+
+    #[doc = include_str!("./documentation/public_endpoints/getshares.md")]
+    async fn get_shares(&self) -> u64;
+
+    #[doc = include_str!("./documentation/public_endpoints/getprovers.md")]
+    async fn get_provers(&self) -> serde_json::Value;
 }
 
 // /// Definition of private RPC endpoints that require authentication.

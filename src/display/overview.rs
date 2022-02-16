@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkOS library.
 
 // The snarkOS library is free software: you can redistribute it and/or modify
@@ -17,7 +17,8 @@
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout, Rect},
-    style::Color,
+    style::{Color, Style},
+    text::Span,
     widgets::{canvas::Canvas, Block, Borders},
     Frame,
 };
@@ -64,7 +65,7 @@ impl Overview {
         let canvas = Canvas::default()
             .block(Block::default().borders(Borders::ALL).title("Help"))
             .paint(|ctx| {
-                ctx.print(0f64, 0f64, "Press ESC to quit", Color::White);
+                ctx.print(0f64, 0f64, Span::styled("Press ESC to quit", Style::default().fg(Color::White)));
             });
         f.render_widget(canvas, chunks[3]);
     }
