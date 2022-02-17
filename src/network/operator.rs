@@ -190,11 +190,6 @@ impl<N: Network, E: Environment> Operator<N, E> {
                                     // Clear the set of known nonces.
                                     operator.known_nonces.write().await.clear();
 
-                                    // Route a `PoolRequest` to the peer.
-                                    let message = Message::PoolRequest(BASE_SHARE_DIFFICULTY, Data::Object(block_template.clone()));
-                                    if let Err(error) = peers_router.send(PeersRequest::MessagePropagateProver(message)).await {
-                                        warn!("Failed to propagate PoolRequest: {}", error);
-                                    }
                                     let pool_message = Message::NewBlockTemplate(Data::Object(block_template));
                                     if let Err(error) = peers_router.send(PeersRequest::MessagePropagatePoolServer(pool_message)).await {
                                         warn!("Failed to propagate PoolRequest: {}", error);
