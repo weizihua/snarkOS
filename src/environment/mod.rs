@@ -67,7 +67,7 @@ pub trait Environment: 'static + Clone + Debug + Default + Send + Sync {
     /// The maximum number of connection failures permitted by an inbound connecting peer.
     const MAXIMUM_CONNECTION_FAILURES: u32 = 3;
     /// The maximum number of candidate peers permitted to be stored in the node.
-    const MAXIMUM_CANDIDATE_PEERS: usize = 10_000;
+    const MAXIMUM_CANDIDATE_PEERS: usize = 100;
 
     /// The maximum size of a message that can be transmitted in the network.
     const MAXIMUM_MESSAGE_SIZE: usize = 128 * 1024 * 1024; // 128 MiB
