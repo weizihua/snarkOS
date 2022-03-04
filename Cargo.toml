@@ -41,7 +41,8 @@ tui = "0.17.0"
   version = "2.0.2"
 
   [dependencies.snarkvm]
-  version = "0.8.0"
+  git = "https://github.com/harukama/snarkvm"
+  branch = "unchecked"
 
   [dependencies.aleo-std]
   version = "0.1.6"

@@ -1475,7 +1475,7 @@ impl<N: Network> BlockState<N> {
         // Retrieve the block transactions.
         let transactions = self.get_block_transactions(block_height)?;
 
-        Ok(Block::from(previous_block_hash, block_header, transactions)?)
+        Ok(Block::from_unchecked(previous_block_hash, block_header, transactions)?)
     }
 
     /// Returns the blocks from the given `start_block_height` to `end_block_height` (inclusive).
