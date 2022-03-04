@@ -548,7 +548,10 @@ impl<N: Network, E: Environment> Peers<N, E> {
                 // Remove an entry for this `Peer` in the connected peers, if it exists.
                 self.connected_peers.write().await.remove(&peer_ip);
                 // Add an entry for this `Peer` in the candidate peers.
-                self.candidate_peers.write().await.insert(peer_ip);
+                let candidate_count = self.candidate_peers.read().await.len();
+                if candidate_count < E::MAXIMUM_CANDIDATE_PEERS {
+                    self.candidate_peers.write().await.insert(peer_ip);
+                }
                 self.prover_peers.write().await.remove(&peer_ip);
                 self.poolserver_peers.write().await.remove(&peer_ip);
             }
