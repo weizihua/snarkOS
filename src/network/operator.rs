@@ -155,6 +155,10 @@ impl<N: Network, E: Environment> Operator<N, E> {
                     let _ = router.send(());
                     // TODO (julesdesmit): Add logic to the loop to retarget share difficulty.
                     loop {
+                        if !E::status().is_ready() {
+                            tokio::time::sleep(HEARTBEAT_IN_SECONDS).await;
+                            continue;
+                        }
                         // Determine if the current block template is stale.
                         let is_block_template_stale = match &*operator.block_template.read().await {
                             Some(template) => operator.ledger_reader.latest_block_height().saturating_add(1) != template.block_height(),
