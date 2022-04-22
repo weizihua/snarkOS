@@ -114,7 +114,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
             ledger_reader.latest_block_hash(),
             Data::Object(ledger_reader.latest_block_header()),
         );
-        trace!("Sending '{}' to {}", message.name(), peer_ip);
+        info!("Sending first '{}' to {}", message.name(), peer_ip);
         outbound_socket.send(message).await?;
 
         // Create a channel for this peer.
@@ -184,7 +184,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
         let (peer_nonce, node_type, status) = match outbound_socket.next().await {
             Some(Ok(message)) => {
                 // Process the message.
-                trace!("Received '{}-B' from {}", message.name(), peer_ip);
+                info!("Received '{}-B' from {}", message.name(), peer_ip);
                 match message {
                     Message::ChallengeRequest(
                         version,
@@ -290,7 +290,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
         match outbound_socket.next().await {
             Some(Ok(message)) => {
                 // Process the message.
-                trace!("Received '{}-A' from {}", message.name(), peer_ip);
+                info!("Received '{}-A' from {}", message.name(), peer_ip);
                 match message {
                     Message::ChallengeResponse(block_header) => {
                         // Perform the deferred non-blocking deserialization of the block header.
@@ -465,7 +465,7 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                 }
                             }
                             // Process the message.
-                            trace!("Received '{}' from {}", message.name(), peer_ip);
+                            info!("Received '{}' from {}", message.name(), peer_ip);
                             match message {
                                 Message::BlockRequest(start_block_height, end_block_height) => {
                                     // Ensure the request is within the accepted limits.
@@ -597,6 +597,8 @@ impl<N: Network, E: Environment> Peer<N, E> {
                                         Err(_) => None,
                                     };
                                     // Send a `Pong` message to the peer.
+                                    // 
+                                    info!("sending pong to peer: {}", peer_ip);
                                     if let Err(error) = peer.send(Message::Pong(is_fork, Data::Object(ledger_reader.latest_block_locators()))).await {
                                         warn!("[Pong] {}", error);
                                     }

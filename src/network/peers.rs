@@ -542,6 +542,7 @@ impl<N: Network, E: Environment> Peers<N, E> {
             }
             PeersRequest::PeerIsPoolServer(peer_ip) => {
                 // Add an entry for this `Peer` in the pool server peers.
+                info!("adding {peer_ip} to poolserver_peers");
                 self.poolserver_peers.write().await.insert(peer_ip);
             }
             PeersRequest::PeerDisconnected(peer_ip) => {
