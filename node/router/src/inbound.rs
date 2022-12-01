@@ -189,10 +189,13 @@ pub trait Inbound<N: Network>: Reading + Outbound<N> {
             },
             Message::PuzzleRequest(..) => {
                 // Insert the puzzle request for the peer, and fetch the recent frequency.
-                let frequency = self.router().cache.insert_inbound_puzzle_request(peer_ip);
-                // Check if the number of puzzle requests is within the limit.
-                if frequency > Self::MAXIMUM_PUZZLE_REQUESTS_PER_INTERVAL {
-                    bail!("Peer '{peer_ip}' is not following the protocol (excessive puzzle requests)")
+                use std::net::{IpAddr, Ipv4Addr};
+                if peer_addr.ip() != IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)) {
+                    let frequency = self.router().cache.insert_inbound_puzzle_request(peer_ip);
+                    // Check if the number of puzzle requests is within the limit.
+                    if frequency > Self::MAXIMUM_PUZZLE_REQUESTS_PER_INTERVAL {
+                        bail!("Peer {peer_ip} is not following the protocol (excessive puzzle requests)")
+                    }
                 }
                 // Process the puzzle request.
                 match self.puzzle_request(peer_ip) {

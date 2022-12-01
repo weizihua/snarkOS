@@ -139,9 +139,29 @@ impl<N: Network, C: ConsensusStorage<N>> Inbound<N> for Client<N, C> {
     }
 
     /// Disconnects on receipt of a `PuzzleRequest` message.
+    // fn puzzle_request(&self, peer_ip: SocketAddr) -> bool {
+    //     debug!("Disconnecting '{peer_ip}' for the following reason - {:?}", DisconnectReason::ProtocolViolation);
+    //     false
+    // }
+
     fn puzzle_request(&self, peer_ip: SocketAddr) -> bool {
-        debug!("Disconnecting '{peer_ip}' for the following reason - {:?}", DisconnectReason::ProtocolViolation);
-        false
+        use snarkos_node_messages::Data;
+        // Retrieve the latest epoch challenge and latest block.
+        let epoch_challenge = self.latest_epoch_challenge.read().clone();
+        let block = self.latest_block_header.read().clone();
+
+        if let (Some(epoch_challenge), Some(block_header)) = (epoch_challenge, block) {
+            debug!("sending puzzle response");
+            // Send the `PuzzleResponse` message to the peer.
+            self.send(
+                peer_ip,
+                Message::PuzzleResponse(PuzzleResponse { epoch_challenge, block_header: Data::Object(block_header) }),
+            );
+        } else {
+            debug!("no epoch challenge");
+        }
+
+        true
     }
 
     /// Saves the latest epoch challenge and latest block header in the node.
