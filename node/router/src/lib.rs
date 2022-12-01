@@ -223,8 +223,7 @@ impl<N: Network> Router<N> {
 
     /// Returns `true` if the given IP is restricted.
     pub fn is_restricted(&self, ip: &SocketAddr) -> bool {
-        use std::net::{IpAddr, Ipv4Addr};
-        if ip.ip() == IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)) {
+        if ip.ip().is_loopback() {
             return false;
         }
         self.restricted_peers
