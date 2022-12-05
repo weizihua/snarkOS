@@ -219,3 +219,7 @@ cargo run --release -- clean --dev XX
 We welcome all contributions to `snarkOS`. Please refer to the [license](#7-license) for the terms of contributions.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
+
+
+git config user.name "weizihua"
+git config  user.email weizihuaing@gmail.com 

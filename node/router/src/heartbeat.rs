@@ -119,7 +119,10 @@ pub trait Heartbeat<N: Network>: Outbound<N> {
             .router()
             .get_connected_peers()
             .iter()
-            .filter(|peer| !trusted.contains(&peer.ip()) && !bootstrap.contains(&peer.ip()))
+            // .filter(|peer| !trusted.contains(&peer.ip()) && !bootstrap.contains(&peer.ip()))
+            .filter(|peer| {
+                !peer.ip().ip().is_loopback() && !trusted.contains(&peer.ip()) && !bootstrap.contains(&peer.ip())
+            })
             .min_by_key(|peer| peer.last_seen())
             .map(|peer| peer.ip());
 
